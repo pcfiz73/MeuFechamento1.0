@@ -1,0 +1,5 @@
+{
+  "name": "MotoFinance",
+  "description": "A financial management application for delivery drivers to track their income, expenses, and savings goals. The app provides a dashboard summary, transaction management, bank account tracking, and goal setting features to help drivers manage their finances effectively.",
+  "requestFramePermissions": []
+}
