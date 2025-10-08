@@ -1,5 +1,30 @@
+// src/utils.ts
+// IMPORTANTE: Este arquivo agora inclui as funções de utilidade
+// e a inicialização do cliente Supabase.
 
 import type { Receita, Despesa, Period } from './types';
+import { createClient } from '@supabase/supabase-js';
+
+// ==========================================================
+// 1. INICIALIZAÇÃO DO SUPABASE
+// ==========================================================
+
+// Lê as variáveis de ambiente com o prefixo VITE_ (o nome dado para o Vercel)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Checagem para evitar erros em caso de variáveis ausentes
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Erro de Configuração Supabase: As variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY não foram carregadas. Verifique a configuração do Vercel.");
+}
+
+// Inicializa o cliente e o exporta
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+
+// ==========================================================
+// 2. FUNÇÕES DE UTILIDADE EXISTENTES (MANTIDAS)
+// ==========================================================
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
