@@ -288,12 +288,39 @@ const AddPage: React.FC = () => {
 
     return (
         <div className="animate-slide-up space-y-6">
-            <h1 className="text-3xl font-bold text-slate-800">{isEditing ? 'Editar Transação' : 'Adicionar'}</h1>
+            <h1 className="text-3xl font-bold text-slate-800 text-center">{isEditing ? 'Editar Transação' : 'Adicionar'}</h1>
             <Card>
                 <div className="flex border-b border-slate-200 mb-6">
-                    <button disabled={isEditing} onClick={() => setActiveTab('receita')} className={`flex-1 py-3 font-semibold text-center ${activeTab === 'receita' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Receita</button>
-                    <button disabled={isEditing} onClick={() => setActiveTab('despesa')} className={`flex-1 py-3 font-semibold text-center ${activeTab === 'despesa' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Despesa</button>
-                    <button disabled={isEditing} onClick={() => setActiveTab('banco')} className={`flex-1 py-3 font-semibold text-center ${activeTab === 'banco' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Banco</button>
+                    <button
+                        disabled={isEditing}
+                        onClick={() => setActiveTab('receita')}
+                        className={`flex-1 py-3 font-semibold text-center flex items-center justify-center gap-2 transition-colors ${
+                            activeTab === 'receita' ? 'text-green-600 border-b-2 border-green-600' : 'text-slate-500 hover:text-green-500'
+                        }`}
+                    >
+                        <i className="fas fa-plus-circle"></i>
+                        <span>Receita</span>
+                    </button>
+                    <button
+                        disabled={isEditing}
+                        onClick={() => setActiveTab('despesa')}
+                        className={`flex-1 py-3 font-semibold text-center flex items-center justify-center gap-2 transition-colors ${
+                            activeTab === 'despesa' ? 'text-red-600 border-b-2 border-red-600' : 'text-slate-500 hover:text-red-500'
+                        }`}
+                    >
+                        <i className="fas fa-minus-circle"></i>
+                        <span>Despesa</span>
+                    </button>
+                    <button
+                        disabled={isEditing}
+                        onClick={() => setActiveTab('banco')}
+                        className={`flex-1 py-3 font-semibold text-center flex items-center justify-center gap-2 transition-colors ${
+                            activeTab === 'banco' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-blue-500'
+                        }`}
+                    >
+                        <i className="fas fa-university"></i>
+                        <span>Banco</span>
+                    </button>
                 </div>
 
                 {activeTab === 'receita' && (
