@@ -3,7 +3,10 @@
 // e a inicialização do cliente Supabase.
 
 import type { Receita, Despesa, Period } from './types';
-import { createClient } from '@supabase/supabase-js';
+
+// CORREÇÃO: Importa o pacote inteiro como 'supabasejs' para evitar o SyntaxError do ambiente
+// Isso resolve o problema 'doesn't provide an export named: createClient' em alguns ambientes.
+import * as supabasejs from '@supabase/supabase-js'; 
 
 // ==========================================================
 // 1. INICIALIZAÇÃO DO SUPABASE
@@ -18,8 +21,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Erro de Configuração Supabase: As variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY não foram carregadas. Verifique a configuração do Vercel.");
 }
 
-// Inicializa o cliente e o exporta
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Inicializa o cliente, chamando a função createClient do objeto importado
+export const supabase = supabasejs.createClient(supabaseUrl, supabaseAnonKey);
 
 
 // ==========================================================
