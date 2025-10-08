@@ -96,9 +96,9 @@ const DashboardPage: React.FC = () => {
         <div className="animate-slide-up bg-slate-50">
             {/* Header */}
             <div className="bg-blue-600 text-white p-6 rounded-b-3xl shadow-lg -mx-4 -mt-4 mb-6">
-                <h1 className="text-2xl font-bold">Olá, Entregador! 👋</h1>
-                <p className="text-blue-200">Veja como está seu dia</p>
-                <div className="mt-4 bg-blue-700/50 p-1 rounded-xl flex items-center">
+                <h1 className="text-2xl font-bold text-center">Olá, Entregador! 👋</h1>
+                <p className="text-blue-200 text-center">Veja como está seu dia</p>
+                <div className="mt-4 bg-blue-700/50 p-1 rounded-xl flex items-center max-w-sm mx-auto">
                      {(['hoje', 'semana', 'mes'] as Period[]).map((p) => (
                         <button
                             key={p}
