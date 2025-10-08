@@ -4,6 +4,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import type { Receita, Despesa, NewReceitaData, NewDespesaData } from '../types';
 import { RECEITA_PLATAFORMAS, DESPESA_CATEGORIAS } from '../constants';
+import { formatCurrency } from '../utils';
 
 const AddPage: React.FC = () => {
     const { financeData, addReceita, updateReceita, addDespesa, updateDespesa, pageContext, navigate } = useContext(FinanceContext);
@@ -36,10 +37,18 @@ const AddPage: React.FC = () => {
             if (type === 'receita') {
                 const receita = financeData.receitas.find(r => r.id === transacaoId);
                 if (receita) {
+                    let valorForm = receita.valor.toString();
                     const [parcelaAtual, totalParcelas] = receita.parcelamento?.split('/') || ['', ''];
+                     if (receita.parcelamento && totalParcelas) {
+                        const totalParcelasNum = parseInt(totalParcelas, 10);
+                        if (!isNaN(totalParcelasNum) && totalParcelasNum > 0) {
+                            valorForm = (receita.valor * totalParcelasNum).toFixed(2);
+                        }
+                    }
                     setActiveTab('receita');
                     setReceitaForm({
-                        valor: receita.valor.toString(), plataforma: receita.descricao, banco_id: receita.banco_id.toString(),
+                        valor: valorForm,
+                        plataforma: receita.descricao, banco_id: receita.banco_id.toString(),
                         data: receita.data, observacoes: receita.observacoes,
                         tipoPagamento: receita.parcelamento ? 'parcelado' : 'unica',
                         parcelaAtual, totalParcelas
@@ -48,10 +57,18 @@ const AddPage: React.FC = () => {
             } else if (type === 'despesa') {
                 const despesa = financeData.despesas.find(d => d.id === transacaoId);
                 if (despesa) {
+                    let valorForm = despesa.valor.toString();
                     const [parcelaAtual, totalParcelas] = despesa.parcelamento?.split('/') || ['', ''];
+                    if (despesa.parcelamento && totalParcelas) {
+                        const totalParcelasNum = parseInt(totalParcelas, 10);
+                        if (!isNaN(totalParcelasNum) && totalParcelasNum > 0) {
+                             valorForm = (despesa.valor * totalParcelasNum).toFixed(2);
+                        }
+                    }
                     setActiveTab('despesa');
                     setDespesaForm({
-                        valor: despesa.valor.toString(), categoria: despesa.categoria, banco_id: despesa.banco_id.toString(),
+                        valor: valorForm,
+                        categoria: despesa.categoria, banco_id: despesa.banco_id.toString(),
                         data: despesa.data, observacoes: despesa.observacoes,
                         tipoPagamento: despesa.parcelamento ? 'parcelado' : 'unica',
                         parcelaAtual, totalParcelas
@@ -69,7 +86,7 @@ const AddPage: React.FC = () => {
     const handleReceitaSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        const valor = parseFloat(receitaForm.valor);
+        let valor = parseFloat(receitaForm.valor);
         const banco_id = parseInt(receitaForm.banco_id);
         if (isNaN(valor) || isNaN(banco_id) || valor <= 0) {
             alert('Valores inválidos.');
@@ -80,6 +97,17 @@ const AddPage: React.FC = () => {
         const parcelamento = receitaForm.tipoPagamento === 'parcelado' && receitaForm.parcelaAtual && receitaForm.totalParcelas
             ? `${receitaForm.parcelaAtual}/${receitaForm.totalParcelas}`
             : undefined;
+
+        if (parcelamento) {
+            const totalParcelasNum = parseInt(receitaForm.totalParcelas, 10);
+            if (!isNaN(totalParcelasNum) && totalParcelasNum > 0) {
+                valor = valor / totalParcelasNum;
+            } else {
+                 alert('Número total de parcelas inválido.');
+                 setIsSubmitting(false);
+                 return;
+            }
+        }
 
 
         try {
@@ -118,7 +146,7 @@ const AddPage: React.FC = () => {
     const handleDespesaSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        const valor = parseFloat(despesaForm.valor);
+        let valor = parseFloat(despesaForm.valor);
         const banco_id = parseInt(despesaForm.banco_id);
         if (isNaN(valor) || isNaN(banco_id) || valor <= 0) {
             alert('Valores inválidos.');
@@ -129,6 +157,17 @@ const AddPage: React.FC = () => {
         const parcelamento = despesaForm.tipoPagamento === 'parcelado' && despesaForm.parcelaAtual && despesaForm.totalParcelas
             ? `${despesaForm.parcelaAtual}/${despesaForm.totalParcelas}`
             : undefined;
+
+        if (parcelamento) {
+            const totalParcelasNum = parseInt(despesaForm.totalParcelas, 10);
+            if (!isNaN(totalParcelasNum) && totalParcelasNum > 0) {
+                valor = valor / totalParcelasNum;
+            } else {
+                 alert('Número total de parcelas inválido.');
+                 setIsSubmitting(false);
+                 return;
+            }
+        }
 
         try {
             if (isEditing && id) {
@@ -204,7 +243,9 @@ const AddPage: React.FC = () => {
                 {activeTab === 'receita' && (
                     <form onSubmit={handleReceitaSubmit} className="space-y-4">
                         <div className="form-group">
-                            <label className="block text-sm font-medium text-slate-600 mb-1">Valor (R$)</label>
+                            <label className="block text-sm font-medium text-slate-600 mb-1">
+                                {receitaForm.tipoPagamento === 'parcelado' ? 'Valor Total (R$)' : 'Valor (R$)'}
+                            </label>
                             <input type="number" value={receitaForm.valor} onChange={e => setReceitaForm(f => ({...f, valor: e.target.value}))} step="0.01" min="0" className="w-full p-2 border border-slate-300 rounded-lg" required />
                         </div>
                         <div className="form-group">
@@ -215,15 +256,25 @@ const AddPage: React.FC = () => {
                             </select>
                         </div>
                         {receitaForm.tipoPagamento === 'parcelado' && (
-                            <div className="grid grid-cols-2 gap-4 animate-slide-up">
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Parcela Atual</label>
-                                    <input type="number" value={receitaForm.parcelaAtual} onChange={e => setReceitaForm(f => ({...f, parcelaAtual: e.target.value}))} min="1" className="w-full p-2 border border-slate-300 rounded-lg" placeholder="Ex: 1" required />
+                            <div className="space-y-4 animate-slide-up">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="form-group">
+                                        <label className="block text-sm font-medium text-slate-600 mb-1">Parcela Atual</label>
+                                        <input type="number" value={receitaForm.parcelaAtual} onChange={e => setReceitaForm(f => ({...f, parcelaAtual: e.target.value}))} min="1" className="w-full p-2 border border-slate-300 rounded-lg" placeholder="Ex: 1" required />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="block text-sm font-medium text-slate-600 mb-1">Total de Parcelas</label>
+                                        <input type="number" value={receitaForm.totalParcelas} onChange={e => setReceitaForm(f => ({...f, totalParcelas: e.target.value}))} min="1" className="w-full p-2 border border-slate-300 rounded-lg" placeholder="Ex: 3" required />
+                                    </div>
                                 </div>
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Total de Parcelas</label>
-                                    <input type="number" value={receitaForm.totalParcelas} onChange={e => setReceitaForm(f => ({...f, totalParcelas: e.target.value}))} min="1" className="w-full p-2 border border-slate-300 rounded-lg" placeholder="Ex: 3" required />
-                                </div>
+                                 {parseFloat(receitaForm.valor) > 0 && parseInt(receitaForm.totalParcelas) > 0 && (
+                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                                        <span className="text-sm font-medium text-slate-600">Valor de cada parcela: </span>
+                                        <span className="font-bold text-blue-600">
+                                            {formatCurrency(parseFloat(receitaForm.valor) / parseInt(receitaForm.totalParcelas))}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         )}
                         <div className="form-group">
@@ -257,7 +308,9 @@ const AddPage: React.FC = () => {
                 {activeTab === 'despesa' && (
                     <form onSubmit={handleDespesaSubmit} className="space-y-4">
                         <div className="form-group">
-                            <label className="block text-sm font-medium text-slate-600 mb-1">Valor (R$)</label>
+                            <label className="block text-sm font-medium text-slate-600 mb-1">
+                                 {despesaForm.tipoPagamento === 'parcelado' ? 'Valor Total (R$)' : 'Valor (R$)'}
+                            </label>
                             <input type="number" value={despesaForm.valor} onChange={e => setDespesaForm(f => ({...f, valor: e.target.value}))} step="0.01" min="0" className="w-full p-2 border border-slate-300 rounded-lg" required />
                         </div>
                          <div className="form-group">
@@ -268,15 +321,25 @@ const AddPage: React.FC = () => {
                             </select>
                         </div>
                         {despesaForm.tipoPagamento === 'parcelado' && (
-                            <div className="grid grid-cols-2 gap-4 animate-slide-up">
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Parcela Atual</label>
-                                    <input type="number" value={despesaForm.parcelaAtual} onChange={e => setDespesaForm(f => ({...f, parcelaAtual: e.target.value}))} min="1" className="w-full p-2 border border-slate-300 rounded-lg" placeholder="Ex: 1" required />
+                            <div className="space-y-4 animate-slide-up">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="form-group">
+                                        <label className="block text-sm font-medium text-slate-600 mb-1">Parcela Atual</label>
+                                        <input type="number" value={despesaForm.parcelaAtual} onChange={e => setDespesaForm(f => ({...f, parcelaAtual: e.target.value}))} min="1" className="w-full p-2 border border-slate-300 rounded-lg" placeholder="Ex: 1" required />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="block text-sm font-medium text-slate-600 mb-1">Total de Parcelas</label>
+                                        <input type="number" value={despesaForm.totalParcelas} onChange={e => setDespesaForm(f => ({...f, totalParcelas: e.target.value}))} min="1" className="w-full p-2 border border-slate-300 rounded-lg" placeholder="Ex: 3" required />
+                                    </div>
                                 </div>
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Total de Parcelas</label>
-                                    <input type="number" value={despesaForm.totalParcelas} onChange={e => setDespesaForm(f => ({...f, totalParcelas: e.target.value}))} min="1" className="w-full p-2 border border-slate-300 rounded-lg" placeholder="Ex: 3" required />
-                                </div>
+                                {parseFloat(despesaForm.valor) > 0 && parseInt(despesaForm.totalParcelas) > 0 && (
+                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                                        <span className="text-sm font-medium text-slate-600">Valor de cada parcela: </span>
+                                        <span className="font-bold text-blue-600">
+                                            {formatCurrency(parseFloat(despesaForm.valor) / parseInt(despesaForm.totalParcelas))}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         )}
                         <div className="form-group">
