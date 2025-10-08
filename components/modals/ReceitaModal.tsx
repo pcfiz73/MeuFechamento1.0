@@ -1,27 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import Modal from '../Modal';
 import Button from '../Button';
-import type { FinanceData, Receita, Banco } from '../../types';
+import type { Receita, Banco, NewReceitaData } from '../../types';
 import { RECEITA_PLATAFORMAS } from '../../constants';
+import { FinanceContext } from '../../context/FinanceContext';
 
 interface ReceitaModalProps {
     isOpen: boolean;
     onClose: () => void;
     receita?: Receita;
     bancos: Banco[];
-    updateFinanceData: (updater: (prev: FinanceData) => FinanceData) => void;
 }
 
 const getInitialState = (bancos: Banco[]) => ({
     valor: '',
     plataforma: 'iFood',
-    bancoId: bancos.length > 0 ? String(bancos[0].id) : '',
+    banco_id: bancos.length > 0 ? String(bancos[0].id) : '',
     data: new Date().toISOString().split('T')[0],
     observacoes: ''
 });
 
 
-const ReceitaModal: React.FC<ReceitaModalProps> = ({ isOpen, onClose, receita, bancos, updateFinanceData }) => {
+const ReceitaModal: React.FC<ReceitaModalProps> = ({ isOpen, onClose, receita, bancos }) => {
+    const { addReceita, updateReceita } = useContext(FinanceContext);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState(getInitialState(bancos));
 
     useEffect(() => {
@@ -30,7 +32,7 @@ const ReceitaModal: React.FC<ReceitaModalProps> = ({ isOpen, onClose, receita, b
                 setFormData({
                     valor: receita.valor?.toString() || '',
                     plataforma: receita.descricao,
-                    bancoId: receita.bancoId?.toString() || '',
+                    banco_id: receita.banco_id?.toString() || '',
                     data: receita.data,
                     observacoes: receita.observacoes
                 });
@@ -45,67 +47,46 @@ const ReceitaModal: React.FC<ReceitaModalProps> = ({ isOpen, onClose, receita, b
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         const valor = parseFloat(formData.valor);
-        const bancoId = parseInt(formData.bancoId);
+        const banco_id = parseInt(formData.banco_id);
     
-        if (isNaN(valor) || isNaN(bancoId)) {
+        if (isNaN(valor) || isNaN(banco_id) || valor <= 0) {
             alert('Valores inválidos.');
+            setIsSubmitting(false);
             return;
         }
-    
-        updateFinanceData(prev => {
+
+        try {
             if (receita) { // Editing
-                const oldReceita = prev.receitas.find(r => r.id === receita.id);
-                if (!oldReceita) return prev;
-    
-                const novasReceitas = prev.receitas.map(r =>
-                    r.id === receita.id ? {
-                        ...r,
-                        valor,
-                        descricao: formData.plataforma,
-                        bancoId,
-                        data: formData.data,
-                        observacoes: formData.observacoes,
-                    } : r
-                );
-    
-                const novosBancos = prev.bancos.map(b => {
-                    let newSaldo = b.saldo;
-                    // Revert old value from old bank
-                    if (b.id === oldReceita.bancoId) {
-                        newSaldo -= oldReceita.valor;
-                    }
-                    // Apply new value to new bank
-                    if (b.id === bancoId) {
-                        newSaldo += valor;
-                    }
-                    return { ...b, saldo: newSaldo };
-                });
-                
-                return { ...prev, receitas: novasReceitas, bancos: novosBancos };
-    
-            } else { // Adding new
-                const newReceita: Receita = {
-                    id: Date.now(),
+                const updatedReceita: Receita = {
+                    ...receita,
                     valor,
                     descricao: formData.plataforma,
-                    categoria: 'delivery',
-                    bancoId,
+                    banco_id,
+                    data: formData.data,
+                    observacoes: formData.observacoes,
+                };
+                await updateReceita(updatedReceita);
+            } else { // Adding new
+                const newReceita: NewReceitaData = {
+                    valor,
+                    descricao: formData.plataforma,
+                    banco_id,
                     data: formData.data,
                     observacoes: formData.observacoes
                 };
-                const novasReceitas = [...prev.receitas, newReceita];
-                const novosBancos = prev.bancos.map(b =>
-                    b.id === bancoId ? { ...b, saldo: b.saldo + valor } : b
-                );
-                
-                return { ...prev, receitas: novasReceitas, bancos: novosBancos };
+                await addReceita(newReceita);
             }
-        });
-    
-        onClose();
+            onClose();
+        } catch (error) {
+            console.error(error);
+            alert("Falha ao salvar receita.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -124,7 +105,7 @@ const ReceitaModal: React.FC<ReceitaModalProps> = ({ isOpen, onClose, receita, b
                     </div>
                     <div className="form-group">
                         <label className="block text-sm font-medium text-slate-600 mb-1">Banco de Destino</label>
-                        <select name="bancoId" value={formData.bancoId} onChange={handleChange} className="w-full p-2 border border-slate-300 rounded-lg" required>
+                        <select name="banco_id" value={formData.banco_id} onChange={handleChange} className="w-full p-2 border border-slate-300 rounded-lg" required>
                             {bancos.map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
                         </select>
                     </div>
@@ -139,7 +120,9 @@ const ReceitaModal: React.FC<ReceitaModalProps> = ({ isOpen, onClose, receita, b
                 </div>
                 <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-slate-200">
                     <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
-                    <Button type="submit" variant="success">Salvar</Button>
+                    <Button type="submit" variant="success" disabled={isSubmitting}>
+                        {isSubmitting ? 'Salvando...' : 'Salvar'}
+                    </Button>
                 </div>
             </form>
         </Modal>

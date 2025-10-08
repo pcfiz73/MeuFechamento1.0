@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import Modal from '../Modal';
 import Button from '../Button';
-import type { FinanceData, Objetivo } from '../../types';
+import type { Objetivo } from '../../types';
+import { FinanceContext } from '../../context/FinanceContext';
 
 interface ObjetivoModalProps {
     isOpen: boolean;
     onClose: () => void;
     objetivo?: Objetivo;
-    updateFinanceData: (updater: (prev: FinanceData) => FinanceData) => void;
 }
 
-const ObjetivoModal: React.FC<ObjetivoModalProps> = ({ isOpen, onClose, objetivo, updateFinanceData }) => {
+const ObjetivoModal: React.FC<ObjetivoModalProps> = ({ isOpen, onClose, objetivo }) => {
+    const { addObjetivo, updateObjetivo } = useContext(FinanceContext);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         titulo: '',
         metaValor: '',
@@ -35,29 +37,30 @@ const ObjetivoModal: React.FC<ObjetivoModalProps> = ({ isOpen, onClose, objetivo
         setFormData(prev => ({...prev, [e.target.name]: e.target.value}));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         const metaValor = parseFloat(formData.metaValor);
         const valorAtual = parseFloat(formData.valorAtual);
-        if (isNaN(metaValor) || isNaN(valorAtual)) return;
+        if (isNaN(metaValor) || isNaN(valorAtual)) {
+            alert("Valores inválidos.");
+            setIsSubmitting(false);
+            return;
+        }
         
-        updateFinanceData(prev => {
+        try {
             if (objetivo) {
-                return {
-                    ...prev,
-                    objetivos: prev.objetivos.map(o => o.id === objetivo.id ? { ...o, ...formData, metaValor, valorAtual } : o)
-                }
+                await updateObjetivo({ ...objetivo, ...formData, metaValor, valorAtual });
             } else {
-                const newObjetivo: Objetivo = {
-                    id: Date.now(),
-                    ...formData,
-                    metaValor,
-                    valorAtual,
-                };
-                return { ...prev, objetivos: [...prev.objetivos, newObjetivo] };
+                await addObjetivo({ ...formData, metaValor, valorAtual });
             }
-        });
-        onClose();
+            onClose();
+        } catch (error) {
+            console.error(error);
+            alert("Falha ao salvar objetivo.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -81,7 +84,9 @@ const ObjetivoModal: React.FC<ObjetivoModalProps> = ({ isOpen, onClose, objetivo
                 </div>
                  <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-slate-200">
                     <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
-                    <Button type="submit" variant="primary">Salvar</Button>
+                    <Button type="submit" variant="primary" disabled={isSubmitting}>
+                        {isSubmitting ? 'Salvando...' : 'Salvar'}
+                    </Button>
                 </div>
             </form>
         </Modal>

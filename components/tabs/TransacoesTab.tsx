@@ -1,13 +1,12 @@
-import React from 'react';
-import type { FinanceData, Receita, Despesa } from '../../types';
+import React, { useContext } from 'react';
+import type { FinanceData, Receita, Despesa, NewReceitaData, NewDespesaData } from '../../types';
 import Card from '../Card';
 import Button from '../Button';
 import { formatCurrency, formatDate } from '../../utils';
+import { FinanceContext } from '../../context/FinanceContext';
 
 interface TransacoesTabProps {
     type: 'receita' | 'despesa';
-    financeData: FinanceData;
-    updateFinanceData: (updater: (prev: FinanceData) => FinanceData) => void;
     onOpenModal: (data?: any) => void;
 }
 
@@ -70,7 +69,8 @@ const TransactionItem: React.FC<{
     );
 };
 
-const TransacoesTab: React.FC<TransacoesTabProps> = ({ type, financeData, updateFinanceData, onOpenModal }) => {
+const TransacoesTab: React.FC<TransacoesTabProps> = ({ type, onOpenModal }) => {
+    const { financeData, addReceita, addDespesa, deleteReceita, deleteDespesa } = useContext(FinanceContext);
     const isReceita = type === 'receita';
     const title = isReceita ? 'Receitas' : 'Despesas';
     const data = isReceita ? financeData.receitas : financeData.despesas;
@@ -80,84 +80,50 @@ const TransacoesTab: React.FC<TransacoesTabProps> = ({ type, financeData, update
         [{ label: 'iFood', value: 40 }, { label: 'Uber Eats', value: 35 }, { label: 'Rappi', value: 30 }, { label: 'James', value: 28 }] :
         [{ label: 'Combustível', value: 25 }, { label: 'Almoço', value: 15 }, { label: 'Manutenção', value: 50 }, { label: 'Outros', value: 20 }];
 
-    const handleQuickAdd = (descricao: string, valor: number) => {
+    const handleQuickAdd = async (descricao: string, valor: number) => {
         if (financeData.bancos.length === 0) {
             alert('Você precisa cadastrar um banco antes de adicionar uma transação.');
             return;
         }
         const primeiroBancoId = financeData.bancos[0].id;
-    
-        updateFinanceData(prev => {
-            const banco = prev.bancos.find(b => b.id === primeiroBancoId);
-            if (!banco) return prev;
-    
-            if (!isReceita && banco.saldo < valor) {
-                alert(`Saldo insuficiente no banco ${banco.nome}.`);
-                return prev;
-            }
-    
-            const novosBancos = prev.bancos.map(b =>
-                b.id === primeiroBancoId
-                    ? { ...b, saldo: isReceita ? b.saldo + valor : b.saldo - valor }
-                    : b
-            );
-    
-            const commonData = {
-                id: Date.now(),
-                descricao,
-                valor,
-                data: new Date().toISOString().split('T')[0],
-                observacoes: 'Adicionado rapidamente',
-                bancoId: primeiroBancoId
-            };
-            
+
+        const commonData = {
+            valor,
+            data: new Date().toISOString().split('T')[0],
+            observacoes: 'Adicionado rapidamente',
+            banco_id: primeiroBancoId
+        };
+        
+        try {
             if (isReceita) {
-                const newReceita: Receita = { ...commonData, categoria: 'delivery' };
-                return { ...prev, receitas: [...prev.receitas, newReceita], bancos: novosBancos };
+                const newReceita: NewReceitaData = { ...commonData, descricao };
+                await addReceita(newReceita);
             } else {
-                const newDespesa: Despesa = { ...commonData, categoria: descricao.toLowerCase() };
-                return { ...prev, despesas: [...prev.despesas, newDespesa], bancos: novosBancos };
+                const newDespesa: NewDespesaData = { ...commonData, categoria: descricao.toLowerCase() };
+                await addDespesa(newDespesa);
             }
-        });
-        alert(`${title.slice(0,-1)} adicionada com sucesso!`);
+             alert(`${title.slice(0,-1)} adicionada com sucesso!`);
+        } catch (error: any) {
+            console.error("Erro no Quick Add:", error);
+            alert(error.message || `Falha ao adicionar ${type}.`);
+        }
     };
     
-    const handleDelete = (id: number) => {
+    const handleDelete = async (id: number) => {
         if (!window.confirm(`Tem certeza que deseja excluir esta ${type}?`)) {
             return;
         }
-    
-        updateFinanceData(prev => {
-            const { receitas, despesas, bancos } = prev;
-    
-            const transacao = isReceita 
-                ? receitas.find(t => t.id === id) 
-                : despesas.find(t => t.id === id);
-    
-            if (!transacao) {
-                return prev;
-            }
-    
-            const updatedBancos = bancos.map(banco => {
-                if (banco.id === transacao.bancoId) {
-                    const novoSaldo = isReceita 
-                        ? banco.saldo - transacao.valor
-                        : banco.saldo + transacao.valor;
-                    return { ...banco, saldo: novoSaldo };
-                }
-                return banco;
-            });
-    
-            const updatedState: Partial<FinanceData> = { bancos: updatedBancos };
-    
-            if (isReceita) {
-                updatedState.receitas = receitas.filter(t => t.id !== id);
+        
+        try {
+            if(isReceita) {
+                await deleteReceita(id);
             } else {
-                updatedState.despesas = despesas.filter(t => t.id !== id);
+                await deleteDespesa(id);
             }
-    
-            return { ...prev, ...updatedState };
-        });
+        } catch (error) {
+            console.error("Erro ao deletar:", error);
+            alert(`Falha ao excluir ${type}.`);
+        }
     };
 
     return (
@@ -178,7 +144,7 @@ const TransacoesTab: React.FC<TransacoesTabProps> = ({ type, financeData, update
                     <h3 className="text-lg font-bold text-slate-800 mb-2">{title} Registradas</h3>
                     <div className="max-h-[60vh] overflow-y-auto pr-2">
                         {sortedData.length > 0 ? sortedData.map(item => {
-                            const banco = financeData.bancos.find(b => b.id === item.bancoId);
+                            const banco = financeData.bancos.find(b => b.id === item.banco_id);
                             return (
                                 <TransactionItem 
                                     key={item.id} 

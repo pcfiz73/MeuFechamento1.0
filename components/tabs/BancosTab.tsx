@@ -1,12 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import type { FinanceData, ModalState } from '../../types';
 import Card from '../Card';
 import Button from '../Button';
 import { formatCurrency } from '../../utils';
+import { FinanceContext } from '../../context/FinanceContext';
 
 interface BancosTabProps {
-    financeData: FinanceData;
-    updateFinanceData: (updater: (prev: FinanceData) => FinanceData) => void;
     onOpenModal: (type: ModalState['type'], data?: any) => void;
 }
 
@@ -39,31 +38,34 @@ const BankCard: React.FC<{
     );
 };
 
-const BancosTab: React.FC<BancosTabProps> = ({ financeData, updateFinanceData, onOpenModal }) => {
-    const handleDelete = (id: number) => {
-        const hasTransactions = financeData.receitas.some(r => r.bancoId === id) || financeData.despesas.some(d => d.bancoId === id);
-        if (hasTransactions) {
-            alert('Não é possível excluir um banco com transações associadas.');
-            return;
-        }
+const BancosTab: React.FC<BancosTabProps> = ({ onOpenModal }) => {
+    const { financeData, deleteBanco, addSaldoBanco } = useContext(FinanceContext);
+    
+    const handleDelete = async (id: number) => {
         if (!window.confirm('Tem certeza que deseja excluir este banco?')) {
             return;
         }
-        updateFinanceData(prev => ({
-            ...prev,
-            bancos: prev.bancos.filter(b => b.id !== id)
-        }));
+        try {
+            await deleteBanco(id);
+        } catch (error: any) {
+            console.error("Erro ao deletar banco:", error);
+            alert(error.message || 'Falha ao excluir banco.');
+        }
     };
 
-    const handleAddSaldo = (id: number, nome: string) => {
+    const handleAddSaldo = async (id: number, nome: string) => {
         const valorStr = prompt(`Adicionar saldo ao banco '${nome}':`);
         if (valorStr) {
             const valor = parseFloat(valorStr);
             if (!isNaN(valor) && valor > 0) {
-                updateFinanceData(prev => ({
-                    ...prev,
-                    bancos: prev.bancos.map(b => b.id === id ? { ...b, saldo: b.saldo + valor } : b)
-                }));
+                try {
+                    await addSaldoBanco(id, valor);
+                } catch (error) {
+                    console.error("Erro ao adicionar saldo:", error);
+                    alert('Falha ao adicionar saldo.');
+                }
+            } else {
+                alert("Valor inválido.");
             }
         }
     };

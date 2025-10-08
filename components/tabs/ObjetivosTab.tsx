@@ -1,12 +1,11 @@
-import React from 'react';
-import type { FinanceData } from '../../types';
+import React, { useContext } from 'react';
+import type { FinanceData, Objetivo } from '../../types';
 import Card from '../Card';
 import Button from '../Button';
 import { formatCurrency, formatDate } from '../../utils';
+import { FinanceContext } from '../../context/FinanceContext';
 
 interface ObjetivosTabProps {
-    financeData: FinanceData;
-    updateFinanceData: (updater: (prev: FinanceData) => FinanceData) => void;
     onOpenModal: (data?: any) => void;
 }
 
@@ -51,23 +50,36 @@ const GoalCard: React.FC<{
     )
 }
 
-const ObjetivosTab: React.FC<ObjetivosTabProps> = ({ financeData, updateFinanceData, onOpenModal }) => {
-    
-    const handleDelete = (id: number) => {
+const ObjetivosTab: React.FC<ObjetivosTabProps> = ({ onOpenModal }) => {
+    const { financeData, deleteObjetivo, updateObjetivo } = useContext(FinanceContext);
+
+    const handleDelete = async (id: number) => {
         if (!window.confirm('Tem certeza que deseja excluir este objetivo?')) {
             return;
         }
-        updateFinanceData(prev => ({
-            ...prev,
-            objetivos: prev.objetivos.filter(o => o.id !== id)
-        }));
+        try {
+            await deleteObjetivo(id);
+        } catch (error) {
+            console.error("Erro ao excluir objetivo:", error);
+            alert("Falha ao excluir objetivo.");
+        }
     };
 
-    const handleAddValue = (id: number, valor: number) => {
-        updateFinanceData(prev => ({
-            ...prev,
-            objetivos: prev.objetivos.map(o => o.id === id ? { ...o, valorAtual: Math.min(o.metaValor, o.valorAtual + valor) } : o)
-        }));
+    const handleAddValue = async (id: number, valor: number) => {
+        const objetivo = financeData.objetivos.find(o => o.id === id);
+        if (!objetivo) return;
+
+        const updatedObjetivo: Objetivo = { 
+            ...objetivo, 
+            valorAtual: Math.min(objetivo.metaValor, objetivo.valorAtual + valor) 
+        };
+
+        try {
+            await updateObjetivo(updatedObjetivo);
+        } catch (error) {
+            console.error("Erro ao adicionar valor:", error);
+            alert("Falha ao adicionar valor ao objetivo.");
+        }
     };
 
     const handleAddValueManual = (id: number) => {
@@ -79,6 +91,8 @@ const ObjetivosTab: React.FC<ObjetivosTabProps> = ({ financeData, updateFinanceD
             const valor = parseFloat(valorStr);
             if (!isNaN(valor) && valor > 0) {
                 handleAddValue(id, valor);
+            } else {
+                alert("Valor inválido.");
             }
         }
     };

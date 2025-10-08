@@ -42,34 +42,25 @@ const TransactionItem: React.FC<{
 };
 
 const ReportsPage: React.FC = () => {
-    const { financeData, updateFinanceData, navigate } = useContext(FinanceContext);
+    const { financeData, deleteReceita, deleteDespesa, navigate } = useContext(FinanceContext);
     const [activeTab, setActiveTab] = useState<'receitas' | 'despesas'>('receitas');
 
     const sortedReceitas = [...financeData.receitas].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
     const sortedDespesas = [...financeData.despesas].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
-    const handleDelete = (id: number, type: 'receita' | 'despesa') => {
+    const handleDelete = async (id: number, type: 'receita' | 'despesa') => {
         if (!window.confirm(`Tem certeza que deseja excluir esta ${type}?`)) return;
         
-        const isReceita = type === 'receita';
-        updateFinanceData(prev => {
-            const transacao = isReceita ? prev.receitas.find(t => t.id === id) : prev.despesas.find(t => t.id === id);
-            if (!transacao) return prev;
-            
-            const updatedBancos = prev.bancos.map(banco => {
-                if (banco.id === transacao.bancoId) {
-                    return { ...banco, saldo: isReceita ? banco.saldo - transacao.valor : banco.saldo + transacao.valor };
-                }
-                return banco;
-            });
-
-            return {
-                ...prev,
-                bancos: updatedBancos,
-                receitas: isReceita ? prev.receitas.filter(t => t.id !== id) : prev.receitas,
-                despesas: !isReceita ? prev.despesas.filter(t => t.id !== id) : prev.despesas,
-            };
-        });
+        try {
+            if (type === 'receita') {
+                await deleteReceita(id);
+            } else {
+                await deleteDespesa(id);
+            }
+        } catch (error) {
+            console.error(error);
+            alert(`Falha ao excluir ${type}.`);
+        }
     };
 
     const handleEdit = (type: 'receita' | 'despesa', id: number) => {
@@ -93,7 +84,7 @@ const ReportsPage: React.FC = () => {
                                 key={item.id} 
                                 transaction={item} 
                                 type="receita"
-                                bancoNome={financeData.bancos.find(b => b.id === item.bancoId)?.nome || 'N/A'}
+                                bancoNome={financeData.bancos.find(b => b.id === item.banco_id)?.nome || 'N/A'}
                                 onEdit={() => handleEdit('receita', item.id)}
                                 onDelete={() => handleDelete(item.id, 'receita')}
                             />
@@ -105,7 +96,7 @@ const ReportsPage: React.FC = () => {
                                 key={item.id} 
                                 transaction={item} 
                                 type="despesa"
-                                bancoNome={financeData.bancos.find(b => b.id === item.bancoId)?.nome || 'N/A'}
+                                bancoNome={financeData.bancos.find(b => b.id === item.banco_id)?.nome || 'N/A'}
                                 onEdit={() => handleEdit('despesa', item.id)}
                                 onDelete={() => handleDelete(item.id, 'despesa')}
                             />

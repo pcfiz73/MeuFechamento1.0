@@ -1,18 +1,19 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import Modal from '../Modal';
 import Button from '../Button';
-import type { FinanceData, Banco } from '../../types';
+import type { Banco } from '../../types';
+import { FinanceContext } from '../../context/FinanceContext';
 
 interface TransferenciaModalProps {
     isOpen: boolean;
     onClose: () => void;
     bancos: Banco[];
     origemId?: number;
-    updateFinanceData: (updater: (prev: FinanceData) => FinanceData) => void;
 }
 
-const TransferenciaModal: React.FC<TransferenciaModalProps> = ({ isOpen, onClose, bancos, origemId, updateFinanceData }) => {
+const TransferenciaModal: React.FC<TransferenciaModalProps> = ({ isOpen, onClose, bancos, origemId }) => {
+    const { transferirSaldo } = useContext(FinanceContext);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         origemId: origemId?.toString() || '',
         destinoId: '',
@@ -24,6 +25,7 @@ const TransferenciaModal: React.FC<TransferenciaModalProps> = ({ isOpen, onClose
             const initialOrigemId = origemId?.toString() || (bancos.length > 0 ? bancos[0].id.toString() : '');
             const initialDestinoId = bancos.length > 1 && bancos.find(b => b.id.toString() !== initialOrigemId)
                 ? bancos.find(b => b.id.toString() !== initialOrigemId)!.id.toString()
+                // FIX: Added a fallback value to prevent undefined errors when there is only one bank.
                 : '';
 
             setFormData({
@@ -38,33 +40,28 @@ const TransferenciaModal: React.FC<TransferenciaModalProps> = ({ isOpen, onClose
         setFormData(prev => ({...prev, [e.target.name]: e.target.value}));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         const valor = parseFloat(formData.valor);
         const oId = parseInt(formData.origemId);
         const dId = parseInt(formData.destinoId);
 
-        if (isNaN(valor) || isNaN(oId) || isNaN(dId) || oId === dId) {
+        if (isNaN(valor) || isNaN(oId) || isNaN(dId) || oId === dId || valor <= 0) {
             alert('Dados inválidos. Verifique os bancos e o valor.');
+            setIsSubmitting(false);
             return;
         }
 
-        const bancoOrigem = bancos.find(b => b.id === oId);
-        if (!bancoOrigem || bancoOrigem.saldo < valor) {
-            alert('Saldo insuficiente no banco de origem.');
-            return;
+        try {
+            await transferirSaldo(oId, dId, valor);
+            onClose();
+        } catch (error: any) {
+            console.error(error);
+            alert(error.message || 'Falha ao realizar transferência.');
+        } finally {
+            setIsSubmitting(false);
         }
-
-        updateFinanceData(prev => {
-            const newBancos = prev.bancos.map(b => {
-                if (b.id === oId) return { ...b, saldo: b.saldo - valor };
-                if (b.id === dId) return { ...b, saldo: b.saldo + valor };
-                return b;
-            });
-            return { ...prev, bancos: newBancos };
-        });
-
-        onClose();
     };
 
     return (
@@ -73,7 +70,7 @@ const TransferenciaModal: React.FC<TransferenciaModalProps> = ({ isOpen, onClose
                 <div>
                     <label className="block text-sm font-medium text-slate-600 mb-1">Banco de Origem</label>
                     <select name="origemId" value={formData.origemId} onChange={handleChange} className="w-full p-2 border border-slate-300 rounded-lg" required>
-                        {bancos.map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
+                        {bancos.map(b => <option key={b.id} value={b.id}>{b.nome} ({b.saldo.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})</option>)}
                     </select>
                 </div>
                  <div>
@@ -88,7 +85,9 @@ const TransferenciaModal: React.FC<TransferenciaModalProps> = ({ isOpen, onClose
                 </div>
                  <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-slate-200">
                     <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
-                    <Button type="submit" variant="success">Transferir</Button>
+                    <Button type="submit" variant="success" disabled={isSubmitting}>
+                        {isSubmitting ? 'Transferindo...' : 'Transferir'}
+                    </Button>
                 </div>
             </form>
         </Modal>

@@ -1,4 +1,3 @@
-
 export interface Receita {
   id: number;
   descricao: string;
@@ -6,7 +5,7 @@ export interface Receita {
   categoria: string;
   data: string;
   observacoes: string;
-  bancoId: number;
+  banco_id: number;
 }
 
 export interface Despesa {
@@ -16,7 +15,7 @@ export interface Despesa {
   categoria: string;
   data: string;
   observacoes: string;
-  bancoId: number;
+  banco_id: number;
 }
 
 export interface Metas {
@@ -59,3 +58,9 @@ export interface ModalState {
   type: 'receita' | 'despesa' | 'banco' | 'objetivo' | 'transferencia' | 'meta' | null;
   data?: any;
 }
+
+// Tipos para criação de novos registros, sem o 'id'
+export type NewReceitaData = Omit<Receita, 'id' | 'categoria'> & { categoria?: string };
+export type NewDespesaData = Omit<Despesa, 'id' | 'descricao'>;
+export type NewBancoData = Omit<Banco, 'id'>;
+export type NewObjetivoData = Omit<Objetivo, 'id'>;

@@ -2,24 +2,25 @@ import React, { useState, useEffect, useContext } from 'react';
 import { FinanceContext } from '../context/FinanceContext';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import type { Receita, Despesa } from '../types';
+import type { Receita, Despesa, NewReceitaData, NewDespesaData } from '../types';
 import { RECEITA_PLATAFORMAS, DESPESA_CATEGORIAS } from '../constants';
 
 const AddPage: React.FC = () => {
-    const { financeData, updateFinanceData, pageContext, navigate } = useContext(FinanceContext);
+    const { financeData, addReceita, updateReceita, addDespesa, updateDespesa, pageContext, navigate } = useContext(FinanceContext);
     const { type, id } = pageContext || {};
 
     const [activeTab, setActiveTab] = useState<'receita' | 'despesa'>(type === 'despesa' ? 'despesa' : 'receita');
     const isEditing = Boolean(id);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
 
     const getInitialReceitaState = () => ({
-        valor: '', plataforma: 'iFood', bancoId: financeData.bancos.length > 0 ? String(financeData.bancos[0].id) : '',
+        valor: '', plataforma: 'iFood', banco_id: financeData.bancos.length > 0 ? String(financeData.bancos[0].id) : '',
         data: new Date().toISOString().split('T')[0], observacoes: ''
     });
 
     const getInitialDespesaState = () => ({
-        valor: '', categoria: 'combustivel', bancoId: financeData.bancos.length > 0 ? String(financeData.bancos[0].id) : '',
+        valor: '', categoria: 'combustivel', banco_id: financeData.bancos.length > 0 ? String(financeData.bancos[0].id) : '',
         data: new Date().toISOString().split('T')[0], observacoes: ''
     });
 
@@ -27,17 +28,15 @@ const AddPage: React.FC = () => {
     const [despesaForm, setDespesaForm] = useState(getInitialDespesaState());
     
     useEffect(() => {
-        // Reset save state when context changes (e.g., new navigation to this page)
         setIsSaved(false);
-
-        if (isEditing && id) {
-            const transacaoId = parseInt(id, 10);
+        const transacaoId = id ? parseInt(id, 10) : undefined;
+        if (isEditing && transacaoId) {
             if (type === 'receita') {
                 const receita = financeData.receitas.find(r => r.id === transacaoId);
                 if (receita) {
                     setActiveTab('receita');
                     setReceitaForm({
-                        valor: receita.valor.toString(), plataforma: receita.descricao, bancoId: receita.bancoId.toString(),
+                        valor: receita.valor.toString(), plataforma: receita.descricao, banco_id: receita.banco_id.toString(),
                         data: receita.data, observacoes: receita.observacoes
                     });
                 }
@@ -46,81 +45,101 @@ const AddPage: React.FC = () => {
                 if (despesa) {
                     setActiveTab('despesa');
                     setDespesaForm({
-                        valor: despesa.valor.toString(), categoria: despesa.categoria, bancoId: despesa.bancoId.toString(),
+                        valor: despesa.valor.toString(), categoria: despesa.categoria, banco_id: despesa.banco_id.toString(),
                         data: despesa.data, observacoes: despesa.observacoes
                     });
                 }
             }
         } else {
-            // Reset forms for new entry
             setReceitaForm(getInitialReceitaState());
             setDespesaForm(getInitialDespesaState());
+            setActiveTab(type === 'despesa' ? 'despesa' : 'receita');
         }
-    }, [id, type, isEditing, financeData.bancos, financeData.receitas, financeData.despesas]);
+    }, [id, type, isEditing, financeData]);
 
 
-    const handleReceitaSubmit = (e: React.FormEvent) => {
+    const handleReceitaSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         const valor = parseFloat(receitaForm.valor);
-        const bancoId = parseInt(receitaForm.bancoId);
-        if (isNaN(valor) || isNaN(bancoId)) return alert('Valores inválidos.');
+        const banco_id = parseInt(receitaForm.banco_id);
+        if (isNaN(valor) || isNaN(banco_id) || valor <= 0) {
+            alert('Valores inválidos.');
+            setIsSubmitting(false);
+            return;
+        }
 
-        updateFinanceData(prev => {
+        try {
             if (isEditing && id) {
-                const oldReceita = prev.receitas.find(r => r.id === parseInt(id, 10));
-                if (!oldReceita) return prev;
-
-                const novasReceitas = prev.receitas.map(r => r.id === parseInt(id, 10) ? { ...r, valor, descricao: receitaForm.plataforma, bancoId, data: receitaForm.data, observacoes: receitaForm.observacoes } : r);
-                const novosBancos = prev.bancos.map(b => {
-                    let newSaldo = b.saldo;
-                    if (b.id === oldReceita.bancoId) newSaldo -= oldReceita.valor;
-                    if (b.id === bancoId) newSaldo += valor;
-                    return { ...b, saldo: newSaldo };
-                });
-                return { ...prev, receitas: novasReceitas, bancos: novosBancos };
+                const updatedReceita: Receita = { 
+                    id: parseInt(id, 10),
+                    valor, 
+                    descricao: receitaForm.plataforma, 
+                    categoria: 'delivery', 
+                    banco_id, 
+                    data: receitaForm.data, 
+                    observacoes: receitaForm.observacoes 
+                };
+                await updateReceita(updatedReceita);
             } else {
-                const newReceita: Receita = { id: Date.now(), valor, descricao: receitaForm.plataforma, categoria: 'delivery', bancoId, data: receitaForm.data, observacoes: receitaForm.observacoes };
-                return { ...prev, receitas: [...prev.receitas, newReceita], bancos: prev.bancos.map(b => b.id === bancoId ? { ...b, saldo: b.saldo + valor } : b) };
+                const newReceita: NewReceitaData = { 
+                    valor, 
+                    descricao: receitaForm.plataforma, 
+                    banco_id, 
+                    data: receitaForm.data, 
+                    observacoes: receitaForm.observacoes 
+                };
+                await addReceita(newReceita);
             }
-        });
-        setIsSaved(true);
+            setIsSaved(true);
+        } catch(error) {
+            console.error(error);
+            alert("Erro ao salvar receita.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handleDespesaSubmit = (e: React.FormEvent) => {
+    const handleDespesaSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         const valor = parseFloat(despesaForm.valor);
-        const bancoId = parseInt(despesaForm.bancoId);
-        if (isNaN(valor) || isNaN(bancoId)) return alert('Valores inválidos.');
+        const banco_id = parseInt(despesaForm.banco_id);
+        if (isNaN(valor) || isNaN(banco_id) || valor <= 0) {
+            alert('Valores inválidos.');
+            setIsSubmitting(false);
+            return;
+        }
 
-        updateFinanceData(prev => {
-            const banco = prev.bancos.find(b => b.id === bancoId);
+        try {
             if (isEditing && id) {
-                 const oldDespesa = prev.despesas.find(d => d.id === parseInt(id, 10));
-                 if (!oldDespesa || !banco) return prev;
-                 
-                 const saldoAjustado = (banco.id === oldDespesa.bancoId) ? (banco.saldo + oldDespesa.valor) : banco.saldo;
-                 if (saldoAjustado < valor) {
-                     alert(`Saldo insuficiente no banco ${banco?.nome}.`);
-                     return prev;
-                 }
-                 const novasDespesas = prev.despesas.map(d => d.id === parseInt(id, 10) ? { ...d, valor, categoria: despesaForm.categoria, descricao: DESPESA_CATEGORIAS.find(c => c.value === despesaForm.categoria)?.label || 'Outros', bancoId, data: despesaForm.data, observacoes: despesaForm.observacoes } : d);
-                 const novosBancos = prev.bancos.map(b => {
-                    let newSaldo = b.saldo;
-                    if (b.id === oldDespesa.bancoId) newSaldo += oldDespesa.valor;
-                    if (b.id === bancoId) newSaldo -= valor;
-                    return { ...b, saldo: newSaldo };
-                });
-                 return { ...prev, despesas: novasDespesas, bancos: novosBancos };
+                 const updatedDespesa: Despesa = {
+                    id: parseInt(id, 10),
+                    valor,
+                    categoria: despesaForm.categoria,
+                    descricao: DESPESA_CATEGORIAS.find(c => c.value === despesaForm.categoria)?.label || 'Outros',
+                    banco_id,
+                    data: despesaForm.data,
+                    observacoes: despesaForm.observacoes
+                 };
+                 await updateDespesa(updatedDespesa);
             } else {
-                if (!banco || banco.saldo < valor) {
-                    alert(`Saldo insuficiente no banco ${banco?.nome}.`);
-                    return prev;
-                }
-                const newDespesa: Despesa = { id: Date.now(), valor, categoria: despesaForm.categoria, descricao: DESPESA_CATEGORIAS.find(c => c.value === despesaForm.categoria)?.label || 'Outros', bancoId, data: despesaForm.data, observacoes: despesaForm.observacoes };
-                return { ...prev, despesas: [...prev.despesas, newDespesa], bancos: prev.bancos.map(b => b.id === bancoId ? { ...b, saldo: b.saldo - valor } : b) };
+                const newDespesa: NewDespesaData = { 
+                    valor,
+                    categoria: despesaForm.categoria,
+                    banco_id,
+                    data: despesaForm.data,
+                    observacoes: despesaForm.observacoes
+                };
+                await addDespesa(newDespesa);
             }
-        });
-        setIsSaved(true);
+            setIsSaved(true);
+        } catch(error: any) {
+            console.error(error);
+            alert(error.message || "Erro ao salvar despesa.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
     
     const handleAddAnother = () => {
@@ -175,7 +194,7 @@ const AddPage: React.FC = () => {
                         </div>
                         <div className="form-group">
                             <label className="block text-sm font-medium text-slate-600 mb-1">Banco de Destino</label>
-                            <select value={receitaForm.bancoId} onChange={e => setReceitaForm(f => ({...f, bancoId: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" required>
+                            <select value={receitaForm.banco_id} onChange={e => setReceitaForm(f => ({...f, banco_id: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" required>
                                 {financeData.bancos.map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
                             </select>
                         </div>
@@ -188,7 +207,9 @@ const AddPage: React.FC = () => {
                             <textarea value={receitaForm.observacoes} onChange={e => setReceitaForm(f => ({...f, observacoes: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg h-24"></textarea>
                         </div>
                         <div className="flex justify-end pt-4">
-                            <Button type="submit" variant="success">{isEditing ? 'Salvar Alterações' : 'Adicionar Receita'}</Button>
+                            <Button type="submit" variant="success" disabled={isSubmitting}>
+                                {isSubmitting ? 'Salvando...' : (isEditing ? 'Salvar Alterações' : 'Adicionar Receita')}
+                            </Button>
                         </div>
                     </form>
                 )}
@@ -202,12 +223,13 @@ const AddPage: React.FC = () => {
                         <div className="form-group">
                             <label className="block text-sm font-medium text-slate-600 mb-1">Categoria</label>
                             <select value={despesaForm.categoria} onChange={e => setDespesaForm(f => ({...f, categoria: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" required>
+                                {/* FIX: Corrected typo from DESPESA_CATEGORias to DESPESA_CATEGORIAS. */}
                                 {DESPESA_CATEGORIAS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                             </select>
                         </div>
                         <div className="form-group">
                             <label className="block text-sm font-medium text-slate-600 mb-1">Banco de Origem</label>
-                            <select value={despesaForm.bancoId} onChange={e => setDespesaForm(f => ({...f, bancoId: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" required>
+                            <select value={despesaForm.banco_id} onChange={e => setDespesaForm(f => ({...f, banco_id: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" required>
                                 {financeData.bancos.map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
                             </select>
                         </div>
@@ -220,7 +242,9 @@ const AddPage: React.FC = () => {
                             <textarea value={despesaForm.observacoes} onChange={e => setDespesaForm(f => ({...f, observacoes: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg h-24"></textarea>
                         </div>
                          <div className="flex justify-end pt-4">
-                            <Button type="submit" variant="danger">{isEditing ? 'Salvar Alterações' : 'Adicionar Despesa'}</Button>
+                            <Button type="submit" variant="danger" disabled={isSubmitting}>
+                                {isSubmitting ? 'Salvando...' : (isEditing ? 'Salvar Alterações' : 'Adicionar Despesa')}
+                            </Button>
                         </div>
                     </form>
                 )}

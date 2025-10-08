@@ -2,7 +2,7 @@ import React, { useContext, useState } from 'react';
 import { FinanceContext } from '../context/FinanceContext';
 import Card from '../components/Card';
 import { formatCurrency, formatDate } from '../utils';
-import type { Objetivo } from '../types';
+import type { Objetivo, NewObjetivoData } from '../types';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 
 const GoalCard: React.FC<{
@@ -46,8 +46,9 @@ const GoalCard: React.FC<{
 
 
 const GoalsPage: React.FC = () => {
-    const { financeData, updateFinanceData, openModal } = useContext(FinanceContext);
+    const { financeData, addObjetivo, updateObjetivo, deleteObjetivo, openModal } = useContext(FinanceContext);
     const [isCreating, setIsCreating] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [newGoal, setNewGoal] = useState({
         titulo: '',
         metaValor: '',
@@ -59,46 +60,59 @@ const GoalsPage: React.FC = () => {
         setNewGoal(prev => ({...prev, [e.target.name]: e.target.value}));
     };
 
-    const handleCreateGoal = (e: React.FormEvent) => {
+    const handleCreateGoal = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         const metaValor = parseFloat(newGoal.metaValor);
         const valorAtual = parseFloat(newGoal.valorAtual);
 
         if (isNaN(metaValor) || isNaN(valorAtual) || !newGoal.titulo || !newGoal.dataLimite) {
             alert('Por favor, preencha todos os campos obrigatórios.');
+            setIsSubmitting(false);
             return;
         }
 
-        updateFinanceData(prev => {
-            const newObjetivo: Objetivo = {
-                id: Date.now(),
+        try {
+            const newObjetivo: NewObjetivoData = {
                 titulo: newGoal.titulo,
                 metaValor,
                 valorAtual,
                 dataLimite: newGoal.dataLimite
             };
-            return { ...prev, objetivos: [...prev.objetivos, newObjetivo] };
-        });
-        
-        setNewGoal({ titulo: '', metaValor: '', valorAtual: '0', dataLimite: '' });
-        setIsCreating(false);
+            await addObjetivo(newObjetivo);
+            setNewGoal({ titulo: '', metaValor: '', valorAtual: '0', dataLimite: '' });
+            setIsCreating(false);
+        } catch(error) {
+            console.error(error);
+            alert('Falha ao criar meta.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handleGoalDelete = (id: number) => {
+    const handleGoalDelete = async (id: number) => {
         if (!window.confirm('Tem certeza que deseja excluir este objetivo?')) {
             return;
         }
-        updateFinanceData(prev => ({
-            ...prev,
-            objetivos: prev.objetivos.filter(o => o.id !== id)
-        }));
+        try {
+            await deleteObjetivo(id);
+        } catch (error) {
+            console.error(error);
+            alert('Falha ao excluir objetivo.');
+        }
     };
 
-    const handleAddValue = (id: number, valor: number) => {
-        updateFinanceData(prev => ({
-            ...prev,
-            objetivos: prev.objetivos.map(o => o.id === id ? { ...o, valorAtual: Math.min(o.metaValor, o.valorAtual + valor) } : o)
-        }));
+    const handleAddValue = async (id: number, valor: number) => {
+        const objetivo = financeData.objetivos.find(o => o.id === id);
+        if (!objetivo) return;
+        
+        const novoValor = Math.min(objetivo.metaValor, objetivo.valorAtual + valor);
+        try {
+            await updateObjetivo({ ...objetivo, valorAtual: novoValor });
+        } catch (error) {
+            console.error(error);
+            alert('Falha ao adicionar valor.');
+        }
     };
 
     const handleAddValueManual = (id: number) => {
@@ -150,7 +164,9 @@ const GoalsPage: React.FC = () => {
                         </div>
                         <div className="flex justify-end gap-4 pt-2">
                             <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 rounded-lg font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors">Cancelar</button>
-                            <button type="submit" className="px-4 py-2 rounded-lg font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors">Criar Meta</button>
+                            <button type="submit" className="px-4 py-2 rounded-lg font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors" disabled={isSubmitting}>
+                               {isSubmitting ? 'Criando...' : 'Criar Meta'}
+                            </button>
                         </div>
                     </form>
                 </Card>

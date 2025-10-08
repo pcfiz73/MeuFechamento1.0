@@ -2,16 +2,16 @@ import type { FinanceData } from './types';
 
 export const initialFinanceData: FinanceData = {
     receitas: [
-        { id: 1, descricao: 'iFood', valor: 45.50, categoria: 'delivery', data: new Date(Date.now() - 0 * 86400000).toISOString().split('T')[0], observacoes: '', bancoId: 1 },
-        { id: 2, descricao: 'Uber Eats', valor: 38.20, categoria: 'delivery', data: new Date(Date.now() - 0 * 86400000).toISOString().split('T')[0], observacoes: '', bancoId: 1 },
-        { id: 3, descricao: 'Rappi', valor: 32.00, categoria: 'delivery', data: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], observacoes: '', bancoId: 2 },
-        { id: 4, descricao: 'Freelance', valor: 150.00, categoria: 'freelance', data: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], observacoes: '', bancoId: 2 },
-        { id: 5, descricao: 'iFood', valor: 28.50, categoria: 'delivery', data: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0], observacoes: '', bancoId: 3 }
+        { id: 1, descricao: 'iFood', valor: 45.50, categoria: 'delivery', data: new Date(Date.now() - 0 * 86400000).toISOString().split('T')[0], observacoes: '', banco_id: 1 },
+        { id: 2, descricao: 'Uber Eats', valor: 38.20, categoria: 'delivery', data: new Date(Date.now() - 0 * 86400000).toISOString().split('T')[0], observacoes: '', banco_id: 1 },
+        { id: 3, descricao: 'Rappi', valor: 32.00, categoria: 'delivery', data: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], observacoes: '', banco_id: 2 },
+        { id: 4, descricao: 'Freelance', valor: 150.00, categoria: 'freelance', data: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], observacoes: '', banco_id: 2 },
+        { id: 5, descricao: 'iFood', valor: 28.50, categoria: 'delivery', data: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0], observacoes: '', banco_id: 3 }
     ],
     despesas: [
-        { id: 1, descricao: 'Combustível', valor: 25.00, categoria: 'combustivel', data: new Date(Date.now() - 0 * 86400000).toISOString().split('T')[0], observacoes: '', bancoId: 1 },
-        { id: 2, descricao: 'Almoço', valor: 15.00, categoria: 'alimentacao', data: new Date(Date.now() - 0 * 86400000).toISOString().split('T')[0], observacoes: '', bancoId: 1 },
-        { id: 3, descricao: 'Manutenção', valor: 80.00, categoria: 'manutencao', data: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], observacoes: '', bancoId: 2 }
+        { id: 1, descricao: 'Combustível', valor: 25.00, categoria: 'combustivel', data: new Date(Date.now() - 0 * 86400000).toISOString().split('T')[0], observacoes: '', banco_id: 1 },
+        { id: 2, descricao: 'Almoço', valor: 15.00, categoria: 'alimentacao', data: new Date(Date.now() - 0 * 86400000).toISOString().split('T')[0], observacoes: '', banco_id: 1 },
+        { id: 3, descricao: 'Manutenção', valor: 80.00, categoria: 'manutencao', data: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], observacoes: '', banco_id: 2 }
     ],
     metas: {
         // FIX: Add missing 'id' property to conform to the Metas type.

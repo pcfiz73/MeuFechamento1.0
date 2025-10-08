@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import Modal from '../Modal';
 import Button from '../Button';
-import type { FinanceData, Banco } from '../../types';
+import type { Banco } from '../../types';
+import { FinanceContext } from '../../context/FinanceContext';
 
 interface BancoModalProps {
     isOpen: boolean;
     onClose: () => void;
     banco?: Banco;
-    updateFinanceData: (updater: (prev: FinanceData) => FinanceData) => void;
 }
 
-const BancoModal: React.FC<BancoModalProps> = ({ isOpen, onClose, banco, updateFinanceData }) => {
+const BancoModal: React.FC<BancoModalProps> = ({ isOpen, onClose, banco }) => {
+    const { addBanco, updateBanco } = useContext(FinanceContext);
     const [formData, setFormData] = useState({ nome: '', conta: '', saldo: '0' });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (banco) {
@@ -29,27 +31,29 @@ const BancoModal: React.FC<BancoModalProps> = ({ isOpen, onClose, banco, updateF
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         const saldo = parseFloat(formData.saldo);
-        if (isNaN(saldo)) return;
+        if (isNaN(saldo)) {
+            alert("Saldo inválido.");
+            setIsSubmitting(false);
+            return;
+        }
 
-        updateFinanceData(prev => {
-            if (banco) { // Editing
-                return {
-                    ...prev,
-                    bancos: prev.bancos.map(b => b.id === banco.id ? { ...b, ...formData, saldo } : b)
-                };
-            } else { // Adding
-                const newBanco: Banco = {
-                    id: Date.now(),
-                    ...formData,
-                    saldo,
-                };
-                return { ...prev, bancos: [...prev.bancos, newBanco] };
+        try {
+            if (banco) {
+                await updateBanco({ ...banco, ...formData, saldo });
+            } else {
+                await addBanco({ ...formData, saldo });
             }
-        });
-        onClose();
+            onClose();
+        } catch (error) {
+            console.error(error);
+            alert("Falha ao salvar o banco. Tente novamente.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -65,11 +69,13 @@ const BancoModal: React.FC<BancoModalProps> = ({ isOpen, onClose, banco, updateF
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-600 mb-1">Saldo (R$)</label>
-                    <input type="number" name="saldo" value={formData.saldo} onChange={handleChange} step="0.01" className="w-full p-2 border border-slate-300 rounded-lg" required />
+                    <input type="number" name="saldo" value={formData.saldo} onChange={handleChange} step="0.01" className="w-full p-2 border border-slate-300 rounded-lg" required disabled={!!banco} />
                 </div>
                  <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-slate-200">
                     <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
-                    <Button type="submit" variant="primary">Salvar</Button>
+                    <Button type="submit" variant="primary" disabled={isSubmitting}>
+                        {isSubmitting ? 'Salvando...' : 'Salvar'}
+                    </Button>
                 </div>
             </form>
         </Modal>

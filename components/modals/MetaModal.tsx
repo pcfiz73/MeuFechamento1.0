@@ -1,17 +1,18 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import Modal from '../Modal';
 import Button from '../Button';
-import type { FinanceData, Metas } from '../../types';
+import type { Metas } from '../../types';
+import { FinanceContext } from '../../context/FinanceContext';
 
 interface MetaModalProps {
     isOpen: boolean;
     onClose: () => void;
     metas: Metas;
-    updateFinanceData: (updater: (prev: FinanceData) => FinanceData) => void;
 }
 
-const MetaModal: React.FC<MetaModalProps> = ({ isOpen, onClose, metas, updateFinanceData }) => {
+const MetaModal: React.FC<MetaModalProps> = ({ isOpen, onClose, metas }) => {
+    const { updateMetas } = useContext(FinanceContext);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState(metas);
 
     useEffect(() => {
@@ -24,13 +25,18 @@ const MetaModal: React.FC<MetaModalProps> = ({ isOpen, onClose, metas, updateFin
         setFormData(prev => ({...prev, [e.target.name]: parseFloat(e.target.value) || 0 }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        updateFinanceData(prev => ({
-            ...prev,
-            metas: formData
-        }));
-        onClose();
+        setIsSubmitting(true);
+        try {
+            await updateMetas(formData);
+            onClose();
+        } catch (error) {
+            console.error(error);
+            alert("Falha ao salvar metas.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -50,7 +56,9 @@ const MetaModal: React.FC<MetaModalProps> = ({ isOpen, onClose, metas, updateFin
                 </div>
                 <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-slate-200">
                     <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
-                    <Button type="submit" variant="primary">Salvar Metas</Button>
+                    <Button type="submit" variant="primary" disabled={isSubmitting}>
+                        {isSubmitting ? 'Salvando...' : 'Salvar Metas'}
+                    </Button>
                 </div>
             </form>
         </Modal>
