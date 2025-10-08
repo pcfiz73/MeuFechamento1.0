@@ -24,7 +24,9 @@ const DashboardPage: React.FC = () => {
             ...financeData.receitas.map(r => ({ ...r, type: 'receita' as const })),
             ...financeData.despesas.map(d => ({ ...d, type: 'despesa' as const }))
         ];
-        return all.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).slice(0, 3);
+        // FIX: Add 'T00:00:00' to ensure consistent date parsing for sorting, preventing timezone-related issues that caused new transactions not to appear.
+        // Also increased slice from 3 to 5 for better visibility.
+        return all.sort((a, b) => new Date(b.data + 'T00:00:00').getTime() - new Date(a.data + 'T00:00:00').getTime()).slice(0, 5);
     }, [financeData]);
 
     const QuickActionButton: React.FC<{
