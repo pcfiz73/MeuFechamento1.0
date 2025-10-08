@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useMemo } from 'react';
 import RelatoriosTab from '../components/tabs/RelatoriosTab';
 import Card from '../components/Card';
 import { FinanceContext } from '../context/FinanceContext';
@@ -48,12 +48,84 @@ const TransactionItem: React.FC<{
     );
 };
 
+
+const FutureTransactionItem: React.FC<{
+    transaction: (Receita | Despesa) & { type: 'receita' | 'despesa' };
+}> = ({ transaction }) => {
+    const isIncome = transaction.type === 'receita';
+
+    return (
+         <div className="flex items-center justify-between py-4 border-b border-slate-100 last:border-b-0 opacity-80">
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+                <div className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center text-white ${isIncome ? 'bg-green-400' : 'bg-red-400'}`}>
+                    <i className="fas fa-calendar-alt"></i>
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="font-medium text-slate-600 truncate">
+                        {transaction.descricao}
+                        <span className="ml-2 text-xs font-semibold text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full align-middle">
+                            {transaction.parcelamento}
+                        </span>
+                    </div>
+                    <div className="text-sm text-slate-500 font-bold">{formatDate(transaction.data)}</div>
+                </div>
+            </div>
+            <div className={`font-bold text-lg ${isIncome ? 'text-green-500' : 'text-red-500'}`}>
+                {formatCurrency(transaction.valor)}
+            </div>
+        </div>
+    );
+};
+
 const ReportsPage: React.FC = () => {
     const { financeData, deleteReceita, deleteDespesa, navigate } = useContext(FinanceContext);
-    const [activeTab, setActiveTab] = useState<'receitas' | 'despesas'>('receitas');
+    const [historyTab, setHistoryTab] = useState<'receitas' | 'despesas'>('receitas');
+    const [futureTab, setFutureTab] = useState<'receitas' | 'despesas'>('despesas');
+
 
     const sortedReceitas = [...financeData.receitas].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
     const sortedDespesas = [...financeData.despesas].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    
+    const futureTransactions = useMemo(() => {
+        const projections: ((Receita & { type: 'receita' }) | (Despesa & { type: 'despesa' }))[] = [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const processTransactions = (transactions: (Receita[] | Despesa[]), type: 'receita' | 'despesa') => {
+            transactions.forEach(t => {
+                if (t.parcelamento) {
+                    const [current, total] = t.parcelamento.split('/').map(Number);
+                    if (!isNaN(current) && !isNaN(total) && current < total) {
+                        const originalDate = new Date(t.data + 'T00:00:00');
+                        for (let i = current + 1; i <= total; i++) {
+                            const futureDate = new Date(originalDate);
+                            futureDate.setMonth(originalDate.getMonth() + (i - current));
+
+                            if (futureDate > today) {
+                                // FIX: Used `as unknown` to cast the projected transaction object. This resolves a TypeScript error where a string `id` was assigned to a type expecting a number. The `FutureTransactionItem` component consuming this object can handle a string `id` as a key without issues.
+                                projections.push({
+                                    ...t,
+                                    id: `${t.id}-proj-${i}`,
+                                    data: futureDate.toISOString().split('T')[0],
+                                    parcelamento: `${i}/${total}`,
+                                    type: type
+                                } as unknown as (Receita & { type: 'receita' }) | (Despesa & { type: 'despesa' }));
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        processTransactions(financeData.receitas, 'receita');
+        processTransactions(financeData.despesas, 'despesa');
+
+        return projections.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+    }, [financeData]);
+
+    const futureReceitas = futureTransactions.filter(t => t.type === 'receita');
+    const futureDespesas = futureTransactions.filter(t => t.type === 'despesa');
+
 
     const handleDelete = async (id: number, type: 'receita' | 'despesa') => {
         if (!window.confirm(`Tem certeza que deseja excluir esta ${type}?`)) return;
@@ -79,13 +151,39 @@ const ReportsPage: React.FC = () => {
             <RelatoriosTab financeData={financeData} />
 
             <Card>
+                <h3 className="text-xl font-bold text-slate-800 mb-4">Lançamentos Futuros</h3>
+                <div className="flex border-b border-slate-200 mb-4">
+                    <button onClick={() => setFutureTab('receitas')} className={`flex-1 py-3 font-semibold text-center ${futureTab === 'receitas' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Receitas</button>
+                    <button onClick={() => setFutureTab('despesas')} className={`flex-1 py-3 font-semibold text-center ${futureTab === 'despesas' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Despesas</button>
+                </div>
+                 <div className="max-h-[40vh] overflow-y-auto pr-2">
+                    {futureTab === 'receitas' && (
+                        futureReceitas.length > 0 ? futureReceitas.map(item => (
+                            <FutureTransactionItem 
+                                key={item.id} 
+                                transaction={item}
+                            />
+                        )) : <p className="text-center text-slate-500 py-8">Nenhuma receita futura.</p>
+                    )}
+                    {futureTab === 'despesas' && (
+                        futureDespesas.length > 0 ? futureDespesas.map(item => (
+                            <FutureTransactionItem 
+                                key={item.id} 
+                                transaction={item}
+                            />
+                        )) : <p className="text-center text-slate-500 py-8">Nenhuma despesa futura.</p>
+                    )}
+                 </div>
+            </Card>
+
+            <Card>
                 <h3 className="text-xl font-bold text-slate-800 mb-4">Histórico de Transações</h3>
                 <div className="flex border-b border-slate-200 mb-4">
-                    <button onClick={() => setActiveTab('receitas')} className={`flex-1 py-3 font-semibold text-center ${activeTab === 'receitas' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Receitas</button>
-                    <button onClick={() => setActiveTab('despesas')} className={`flex-1 py-3 font-semibold text-center ${activeTab === 'despesas' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Despesas</button>
+                    <button onClick={() => setHistoryTab('receitas')} className={`flex-1 py-3 font-semibold text-center ${historyTab === 'receitas' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Receitas</button>
+                    <button onClick={() => setHistoryTab('despesas')} className={`flex-1 py-3 font-semibold text-center ${historyTab === 'despesas' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Despesas</button>
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto pr-2">
-                    {activeTab === 'receitas' && (
+                    {historyTab === 'receitas' && (
                         sortedReceitas.length > 0 ? sortedReceitas.map(item => (
                             <TransactionItem 
                                 key={item.id} 
@@ -97,7 +195,7 @@ const ReportsPage: React.FC = () => {
                             />
                         )) : <p className="text-center text-slate-500 py-8">Nenhuma receita registrada.</p>
                     )}
-                    {activeTab === 'despesas' && (
+                    {historyTab === 'despesas' && (
                         sortedDespesas.length > 0 ? sortedDespesas.map(item => (
                             <TransactionItem 
                                 key={item.id} 
