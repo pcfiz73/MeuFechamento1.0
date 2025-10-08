@@ -7,7 +7,7 @@ import { RECEITA_PLATAFORMAS, DESPESA_CATEGORIAS } from '../constants';
 import { formatCurrency } from '../utils';
 
 const AddPage: React.FC = () => {
-    const { financeData, addReceita, updateReceita, addDespesa, updateDespesa, addBanco, pageContext, navigate } = useContext(FinanceContext);
+    const { financeData, addReceita, updateReceita, addDespesa, updateDespesa, addBanco, pageContext, navigate, openModal } = useContext(FinanceContext);
     const { type, id } = pageContext || {};
 
     const [activeTab, setActiveTab] = useState<'receita' | 'despesa' | 'banco'>(type === 'despesa' ? 'despesa' : 'receita');
@@ -415,21 +415,42 @@ const AddPage: React.FC = () => {
                 )}
 
                 {activeTab === 'banco' && (
-                    <form onSubmit={handleBancoSubmit} className="space-y-4">
-                        <div className="form-group">
-                            <label className="block text-sm font-medium text-slate-600 mb-1">Nome do Banco</label>
-                            <input type="text" value={bancoForm.nome} onChange={e => setBancoForm(f => ({...f, nome: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" required placeholder="Ex: Caixa"/>
+                    <div className="space-y-6">
+                        <form onSubmit={handleBancoSubmit} className="space-y-4">
+                            <div className="form-group">
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Nome do Banco</label>
+                                <input type="text" value={bancoForm.nome} onChange={e => setBancoForm(f => ({...f, nome: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" required placeholder="Ex: Caixa"/>
+                            </div>
+                            <div className="form-group">
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Saldo Inicial (R$)</label>
+                                <input type="number" value={bancoForm.saldo} onChange={e => setBancoForm(f => ({...f, saldo: e.target.value}))} step="0.01" min="0" className="w-full p-2 border border-slate-300 rounded-lg" required placeholder="Ex: 100.50"/>
+                            </div>
+                            <div className="flex justify-end pt-4 gap-4">
+                                <Button type="button" variant="secondary" onClick={() => openModal('transferencia')}>
+                                    Transferir Saldo
+                                </Button>
+                                <Button type="submit" variant="primary" disabled={isSubmitting}>
+                                    {isSubmitting ? 'Cadastrando...' : 'Cadastrar Banco'}
+                                </Button>
+                            </div>
+                        </form>
+                        
+                        <div className="pt-6 border-t border-slate-200">
+                            <h3 className="text-lg font-bold text-slate-800 mb-4">Minhas Contas</h3>
+                            <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                                {financeData.bancos.length > 0 ? (
+                                    financeData.bancos.map(banco => (
+                                        <div key={banco.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                            <span className="font-medium text-slate-700">{banco.nome}</span>
+                                            <span className="font-bold text-green-600">{formatCurrency(banco.saldo)}</span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-center text-slate-500 py-4">Nenhum banco cadastrado.</p>
+                                )}
+                            </div>
                         </div>
-                        <div className="form-group">
-                            <label className="block text-sm font-medium text-slate-600 mb-1">Saldo Inicial (R$)</label>
-                            <input type="number" value={bancoForm.saldo} onChange={e => setBancoForm(f => ({...f, saldo: e.target.value}))} step="0.01" min="0" className="w-full p-2 border border-slate-300 rounded-lg" required placeholder="Ex: 100.50"/>
-                        </div>
-                        <div className="flex justify-end pt-4">
-                            <Button type="submit" variant="primary" disabled={isSubmitting}>
-                                {isSubmitting ? 'Cadastrando...' : 'Cadastrar Banco'}
-                            </Button>
-                        </div>
-                    </form>
+                    </div>
                 )}
             </Card>
         </div>
