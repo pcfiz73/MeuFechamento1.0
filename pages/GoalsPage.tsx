@@ -11,7 +11,7 @@ const GoalCard: React.FC<{
     onDelete: () => void,
     onAddValueManual: (id: number) => void,
 }> = ({ objetivo, onEdit, onDelete, onAddValueManual }) => {
-    const percent = objetivo.metaValor > 0 ? Math.min(Math.round((objetivo.valorAtual / objetivo.metaValor) * 100), 100) : 0;
+    const percent = objetivo.meta_valor > 0 ? Math.min(Math.round((objetivo.valor_atual / objetivo.meta_valor) * 100), 100) : 0;
     
     return (
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -30,14 +30,14 @@ const GoalCard: React.FC<{
                 </div>
             </div>
 
-            <p className="text-xs text-slate-400 mb-3">Prazo: {formatDate(objetivo.dataLimite)}</p>
+            <p className="text-xs text-slate-400 mb-3">Prazo: {formatDate(objetivo.data_limite)}</p>
             
             <div className="w-full bg-slate-200 rounded-full h-2">
                 <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
             </div>
 
             <div className="flex justify-between items-center mt-1">
-                <p className="text-sm text-slate-500">{formatCurrency(objetivo.valorAtual)} de {formatCurrency(objetivo.metaValor)}</p>
+                <p className="text-sm text-slate-500">{formatCurrency(objetivo.valor_atual)} de {formatCurrency(objetivo.meta_valor)}</p>
                 <p className="text-sm font-bold text-slate-600">{percent}%</p>
             </div>
         </div>
@@ -51,9 +51,9 @@ const GoalsPage: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [newGoal, setNewGoal] = useState({
         titulo: '',
-        metaValor: '',
-        valorAtual: '0',
-        dataLimite: ''
+        meta_valor: '',
+        valor_atual: '0',
+        data_limite: ''
     });
 
     const handleNewGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,10 +63,10 @@ const GoalsPage: React.FC = () => {
     const handleCreateGoal = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        const metaValor = parseFloat(newGoal.metaValor);
-        const valorAtual = parseFloat(newGoal.valorAtual);
+        const meta_valor = parseFloat(newGoal.meta_valor);
+        const valor_atual = parseFloat(newGoal.valor_atual);
 
-        if (isNaN(metaValor) || isNaN(valorAtual) || !newGoal.titulo || !newGoal.dataLimite) {
+        if (isNaN(meta_valor) || isNaN(valor_atual) || !newGoal.titulo || !newGoal.data_limite) {
             alert('Por favor, preencha todos os campos obrigatórios.');
             setIsSubmitting(false);
             return;
@@ -75,12 +75,12 @@ const GoalsPage: React.FC = () => {
         try {
             const newObjetivo: NewObjetivoData = {
                 titulo: newGoal.titulo,
-                metaValor,
-                valorAtual,
-                dataLimite: newGoal.dataLimite
+                meta_valor,
+                valor_atual,
+                data_limite: newGoal.data_limite
             };
             await addObjetivo(newObjetivo);
-            setNewGoal({ titulo: '', metaValor: '', valorAtual: '0', dataLimite: '' });
+            setNewGoal({ titulo: '', meta_valor: '', valor_atual: '0', data_limite: '' });
             setIsCreating(false);
         } catch(error) {
             console.error(error);
@@ -106,9 +106,9 @@ const GoalsPage: React.FC = () => {
         const objetivo = financeData.objetivos.find(o => o.id === id);
         if (!objetivo) return;
         
-        const novoValor = Math.min(objetivo.metaValor, objetivo.valorAtual + valor);
+        const novoValor = Math.min(objetivo.meta_valor, objetivo.valor_atual + valor);
         try {
-            await updateObjetivo({ ...objetivo, valorAtual: novoValor });
+            await updateObjetivo({ ...objetivo, valor_atual: novoValor });
         } catch (error) {
             console.error(error);
             alert('Falha ao adicionar valor.');
@@ -151,16 +151,16 @@ const GoalsPage: React.FC = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Valor Alvo (R$) *</label>
-                                <input type="number" name="metaValor" value={newGoal.metaValor} onChange={handleNewGoalChange} step="0.01" min="0" placeholder="0.00" className="w-full p-2 border border-slate-300 rounded-lg" required />
+                                <input type="number" name="meta_valor" value={newGoal.meta_valor} onChange={handleNewGoalChange} step="0.01" min="0" placeholder="0.00" className="w-full p-2 border border-slate-300 rounded-lg" required />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Valor Atual (R$)</label>
-                                <input type="number" name="valorAtual" value={newGoal.valorAtual} onChange={handleNewGoalChange} step="0.01" min="0" placeholder="0" className="w-full p-2 border border-slate-300 rounded-lg" required />
+                                <input type="number" name="valor_atual" value={newGoal.valor_atual} onChange={handleNewGoalChange} step="0.01" min="0" placeholder="0" className="w-full p-2 border border-slate-300 rounded-lg" required />
                             </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-600 mb-1">Prazo *</label>
-                            <input type="date" name="dataLimite" value={newGoal.dataLimite} onChange={handleNewGoalChange} className="w-full p-2 border border-slate-300 rounded-lg" required />
+                            <input type="date" name="data_limite" value={newGoal.data_limite} onChange={handleNewGoalChange} className="w-full p-2 border border-slate-300 rounded-lg" required />
                         </div>
                         <div className="flex justify-end gap-4 pt-2">
                             <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 rounded-lg font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors">Cancelar</button>

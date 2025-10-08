@@ -28,9 +28,9 @@ export interface Metas {
 export interface Objetivo {
   id: number;
   titulo: string;
-  metaValor: number;
-  valorAtual: number;
-  dataLimite: string;
+  meta_valor: number;
+  valor_atual: number;
+  data_limite: string;
 }
 
 export interface Banco {

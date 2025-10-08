@@ -15,21 +15,21 @@ const ObjetivoModal: React.FC<ObjetivoModalProps> = ({ isOpen, onClose, objetivo
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         titulo: '',
-        metaValor: '',
-        valorAtual: '0',
-        dataLimite: ''
+        meta_valor: '',
+        valor_atual: '0',
+        data_limite: ''
     });
 
     useEffect(() => {
         if (objetivo) {
             setFormData({
                 titulo: objetivo.titulo || '',
-                metaValor: objetivo.metaValor?.toString() || '',
-                valorAtual: objetivo.valorAtual?.toString() || '0',
-                dataLimite: objetivo.dataLimite || ''
+                meta_valor: objetivo.meta_valor?.toString() || '',
+                valor_atual: objetivo.valor_atual?.toString() || '0',
+                data_limite: objetivo.data_limite || ''
             });
         } else {
-            setFormData({ titulo: '', metaValor: '', valorAtual: '0', dataLimite: '' });
+            setFormData({ titulo: '', meta_valor: '', valor_atual: '0', data_limite: '' });
         }
     }, [objetivo, isOpen]);
 
@@ -40,9 +40,9 @@ const ObjetivoModal: React.FC<ObjetivoModalProps> = ({ isOpen, onClose, objetivo
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        const metaValor = parseFloat(formData.metaValor);
-        const valorAtual = parseFloat(formData.valorAtual);
-        if (isNaN(metaValor) || isNaN(valorAtual)) {
+        const meta_valor = parseFloat(formData.meta_valor);
+        const valor_atual = parseFloat(formData.valor_atual);
+        if (isNaN(meta_valor) || isNaN(valor_atual)) {
             alert("Valores inválidos.");
             setIsSubmitting(false);
             return;
@@ -50,9 +50,9 @@ const ObjetivoModal: React.FC<ObjetivoModalProps> = ({ isOpen, onClose, objetivo
         
         try {
             if (objetivo) {
-                await updateObjetivo({ ...objetivo, ...formData, metaValor, valorAtual });
+                await updateObjetivo({ ...objetivo, ...formData, meta_valor, valor_atual });
             } else {
-                await addObjetivo({ ...formData, metaValor, valorAtual });
+                await addObjetivo({ ...formData, meta_valor, valor_atual });
             }
             onClose();
         } catch (error) {
@@ -72,15 +72,15 @@ const ObjetivoModal: React.FC<ObjetivoModalProps> = ({ isOpen, onClose, objetivo
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-slate-600 mb-1">Valor da Meta (R$)</label>
-                    <input type="number" name="metaValor" value={formData.metaValor} onChange={handleChange} step="0.01" min="0" className="w-full p-2 border border-slate-300 rounded-lg" required />
+                    <input type="number" name="meta_valor" value={formData.meta_valor} onChange={handleChange} step="0.01" min="0" className="w-full p-2 border border-slate-300 rounded-lg" required />
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-slate-600 mb-1">Valor Atual (R$)</label>
-                    <input type="number" name="valorAtual" value={formData.valorAtual} onChange={handleChange} step="0.01" min="0" className="w-full p-2 border border-slate-300 rounded-lg" required />
+                    <input type="number" name="valor_atual" value={formData.valor_atual} onChange={handleChange} step="0.01" min="0" className="w-full p-2 border border-slate-300 rounded-lg" required />
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-slate-600 mb-1">Data Limite</label>
-                    <input type="date" name="dataLimite" value={formData.dataLimite} onChange={handleChange} className="w-full p-2 border border-slate-300 rounded-lg" required />
+                    <input type="date" name="data_limite" value={formData.data_limite} onChange={handleChange} className="w-full p-2 border border-slate-300 rounded-lg" required />
                 </div>
                  <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-slate-200">
                     <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>

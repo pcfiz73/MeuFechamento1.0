@@ -21,8 +21,8 @@ export const initialFinanceData: FinanceData = {
         mensal: 3600.00
     },
     objetivos: [
-        { id: 1, titulo: 'Moto Nova', metaValor: 15000, valorAtual: 1200, dataLimite: '2025-12-31' },
-        { id: 2, titulo: 'Capacete', metaValor: 300, valorAtual: 280, dataLimite: '2024-10-31' },
+        { id: 1, titulo: 'Moto Nova', meta_valor: 15000, valor_atual: 1200, data_limite: '2025-12-31' },
+        { id: 2, titulo: 'Capacete', meta_valor: 300, valor_atual: 280, data_limite: '2024-10-31' },
     ],
     bancos: [
         { id: 1, nome: 'Nubank', conta: '1234-5', saldo: 1500.00 },

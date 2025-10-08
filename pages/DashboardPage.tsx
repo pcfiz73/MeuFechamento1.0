@@ -45,7 +45,7 @@ const DashboardPage: React.FC = () => {
     );
     
     const GoalItem: React.FC<{ objetivo: Objetivo }> = ({ objetivo }) => {
-        const percent = objetivo.metaValor > 0 ? Math.min(Math.round((objetivo.valorAtual / objetivo.metaValor) * 100), 100) : 0;
+        const percent = objetivo.meta_valor > 0 ? Math.min(Math.round((objetivo.valor_atual / objetivo.meta_valor) * 100), 100) : 0;
         return (
             <div>
                 <div className="flex justify-between items-center mb-1">
@@ -56,7 +56,7 @@ const DashboardPage: React.FC = () => {
                     <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${percent}%` }}></div>
                 </div>
                  <div className="text-xs text-slate-400 mt-1">
-                    {formatCurrency(objetivo.valorAtual)} de {formatCurrency(objetivo.metaValor)}
+                    {formatCurrency(objetivo.valor_atual)} de {formatCurrency(objetivo.meta_valor)}
                 </div>
             </div>
         );

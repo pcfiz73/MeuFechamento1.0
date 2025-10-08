@@ -1,4 +1,5 @@
 
+
 import React, { useMemo } from 'react';
 import type { FinanceData } from '../../types';
 import Card from '../Card';
@@ -122,7 +123,7 @@ const RelatoriosTab: React.FC<RelatoriosTabProps> = ({ financeData }) => {
                     <h3 className="text-xl font-bold text-slate-800 mb-4">Objetivos de Poupança</h3>
                     <div className="space-y-4">
                         {financeData.objetivos.map(obj => (
-                             <ReportItem key={obj.id} label={obj.titulo} value={`${formatCurrency(obj.valorAtual)} / ${formatCurrency(obj.metaValor)}`} />
+                             <ReportItem key={obj.id} label={obj.titulo} value={`${formatCurrency(obj.valor_atual)} / ${formatCurrency(obj.meta_valor)}`} />
                         ))}
                          {financeData.objetivos.length === 0 && <p className="text-slate-500">Nenhum objetivo cadastrado.</p>}
                     </div>

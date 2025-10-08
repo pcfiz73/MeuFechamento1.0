@@ -16,15 +16,15 @@ const GoalCard: React.FC<{
     onAddValue: (id: number, value: number) => void,
     onAddValueManual: (id: number) => void,
 }> = ({ objetivo, onEdit, onDelete, onAddValue, onAddValueManual }) => {
-    const percent = objetivo.metaValor > 0 ? Math.round((objetivo.valorAtual / objetivo.metaValor) * 100) : 0;
-    const restante = objetivo.metaValor - objetivo.valorAtual;
+    const percent = objetivo.meta_valor > 0 ? Math.round((objetivo.valor_atual / objetivo.meta_valor) * 100) : 0;
+    const restante = objetivo.meta_valor - objetivo.valor_atual;
     
     return (
         <Card>
             <div className="flex justify-between items-start mb-4">
                 <div>
                     <h3 className="text-xl font-bold text-slate-800">{objetivo.titulo}</h3>
-                    <p className="text-sm text-slate-400">Meta: {formatCurrency(objetivo.metaValor)} até {formatDate(objetivo.dataLimite)}</p>
+                    <p className="text-sm text-slate-400">Meta: {formatCurrency(objetivo.meta_valor)} até {formatDate(objetivo.data_limite)}</p>
                 </div>
                  <div className={`px-3 py-1 text-sm font-bold rounded-full ${percent >= 100 ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
                     {percent}%
@@ -34,7 +34,7 @@ const GoalCard: React.FC<{
                 <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${Math.min(percent, 100)}%` }}></div>
             </div>
             <div className="flex justify-between text-sm text-slate-500 mb-4">
-                <span>Atual: <span className="font-bold text-slate-700">{formatCurrency(objetivo.valorAtual)}</span></span>
+                <span>Atual: <span className="font-bold text-slate-700">{formatCurrency(objetivo.valor_atual)}</span></span>
                 <span>Restante: <span className="font-bold text-slate-700">{formatCurrency(restante)}</span></span>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
@@ -71,7 +71,7 @@ const ObjetivosTab: React.FC<ObjetivosTabProps> = ({ onOpenModal }) => {
 
         const updatedObjetivo: Objetivo = { 
             ...objetivo, 
-            valorAtual: Math.min(objetivo.metaValor, objetivo.valorAtual + valor) 
+            valor_atual: Math.min(objetivo.meta_valor, objetivo.valor_atual + valor) 
         };
 
         try {
