@@ -21,7 +21,14 @@ const TransactionItem: React.FC<{
                     <i className={`fas ${isIncome ? 'fa-plus' : 'fa-minus'}`}></i>
                 </div>
                 <div className="flex-1 min-w-0">
-                    <div className="font-medium text-slate-700 truncate">{transaction.descricao}</div>
+                    <div className="font-medium text-slate-700 truncate">
+                        {transaction.descricao}
+                        {transaction.parcelamento && (
+                            <span className="ml-2 text-xs font-semibold text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full align-middle">
+                                {transaction.parcelamento}
+                            </span>
+                        )}
+                    </div>
                     <div className="text-sm text-slate-400">{formatDate(transaction.data)}</div>
                     <div className="text-xs text-blue-500 font-semibold"><i className="fas fa-university mr-1"></i> {bancoNome}</div>
                 </div>

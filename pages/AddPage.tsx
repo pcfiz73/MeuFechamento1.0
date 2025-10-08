@@ -16,12 +16,14 @@ const AddPage: React.FC = () => {
 
     const getInitialReceitaState = () => ({
         valor: '', plataforma: 'iFood', banco_id: financeData.bancos.length > 0 ? String(financeData.bancos[0].id) : '',
-        data: new Date().toISOString().split('T')[0], observacoes: ''
+        data: new Date().toISOString().split('T')[0], observacoes: '',
+        tipoPagamento: 'unica', parcelaAtual: '', totalParcelas: ''
     });
 
     const getInitialDespesaState = () => ({
         valor: '', categoria: 'combustivel', banco_id: financeData.bancos.length > 0 ? String(financeData.bancos[0].id) : '',
-        data: new Date().toISOString().split('T')[0], observacoes: ''
+        data: new Date().toISOString().split('T')[0], observacoes: '',
+        tipoPagamento: 'unica', parcelaAtual: '', totalParcelas: ''
     });
 
     const [receitaForm, setReceitaForm] = useState(getInitialReceitaState());
@@ -34,19 +36,25 @@ const AddPage: React.FC = () => {
             if (type === 'receita') {
                 const receita = financeData.receitas.find(r => r.id === transacaoId);
                 if (receita) {
+                    const [parcelaAtual, totalParcelas] = receita.parcelamento?.split('/') || ['', ''];
                     setActiveTab('receita');
                     setReceitaForm({
                         valor: receita.valor.toString(), plataforma: receita.descricao, banco_id: receita.banco_id.toString(),
-                        data: receita.data, observacoes: receita.observacoes
+                        data: receita.data, observacoes: receita.observacoes,
+                        tipoPagamento: receita.parcelamento ? 'parcelado' : 'unica',
+                        parcelaAtual, totalParcelas
                     });
                 }
             } else if (type === 'despesa') {
                 const despesa = financeData.despesas.find(d => d.id === transacaoId);
                 if (despesa) {
+                    const [parcelaAtual, totalParcelas] = despesa.parcelamento?.split('/') || ['', ''];
                     setActiveTab('despesa');
                     setDespesaForm({
                         valor: despesa.valor.toString(), categoria: despesa.categoria, banco_id: despesa.banco_id.toString(),
-                        data: despesa.data, observacoes: despesa.observacoes
+                        data: despesa.data, observacoes: despesa.observacoes,
+                        tipoPagamento: despesa.parcelamento ? 'parcelado' : 'unica',
+                        parcelaAtual, totalParcelas
                     });
                 }
             }
@@ -68,6 +76,11 @@ const AddPage: React.FC = () => {
             setIsSubmitting(false);
             return;
         }
+        
+        const parcelamento = receitaForm.tipoPagamento === 'parcelado' && receitaForm.parcelaAtual && receitaForm.totalParcelas
+            ? `${receitaForm.parcelaAtual}/${receitaForm.totalParcelas}`
+            : undefined;
+
 
         try {
             if (isEditing && id) {
@@ -78,7 +91,8 @@ const AddPage: React.FC = () => {
                     categoria: 'delivery', 
                     banco_id, 
                     data: receitaForm.data, 
-                    observacoes: receitaForm.observacoes 
+                    observacoes: receitaForm.observacoes,
+                    parcelamento
                 };
                 await updateReceita(updatedReceita);
             } else {
@@ -87,7 +101,8 @@ const AddPage: React.FC = () => {
                     descricao: receitaForm.plataforma, 
                     banco_id, 
                     data: receitaForm.data, 
-                    observacoes: receitaForm.observacoes 
+                    observacoes: receitaForm.observacoes,
+                    parcelamento
                 };
                 await addReceita(newReceita);
             }
@@ -110,6 +125,10 @@ const AddPage: React.FC = () => {
             setIsSubmitting(false);
             return;
         }
+        
+        const parcelamento = despesaForm.tipoPagamento === 'parcelado' && despesaForm.parcelaAtual && despesaForm.totalParcelas
+            ? `${despesaForm.parcelaAtual}/${despesaForm.totalParcelas}`
+            : undefined;
 
         try {
             if (isEditing && id) {
@@ -120,7 +139,8 @@ const AddPage: React.FC = () => {
                     descricao: DESPESA_CATEGORIAS.find(c => c.value === despesaForm.categoria)?.label || 'Outros',
                     banco_id,
                     data: despesaForm.data,
-                    observacoes: despesaForm.observacoes
+                    observacoes: despesaForm.observacoes,
+                    parcelamento
                  };
                  await updateDespesa(updatedDespesa);
             } else {
@@ -129,7 +149,8 @@ const AddPage: React.FC = () => {
                     categoria: despesaForm.categoria,
                     banco_id,
                     data: despesaForm.data,
-                    observacoes: despesaForm.observacoes
+                    observacoes: despesaForm.observacoes,
+                    parcelamento
                 };
                 await addDespesa(newDespesa);
             }
@@ -187,6 +208,25 @@ const AddPage: React.FC = () => {
                             <input type="number" value={receitaForm.valor} onChange={e => setReceitaForm(f => ({...f, valor: e.target.value}))} step="0.01" min="0" className="w-full p-2 border border-slate-300 rounded-lg" required />
                         </div>
                         <div className="form-group">
+                            <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de Pagamento</label>
+                            <select value={receitaForm.tipoPagamento} onChange={e => setReceitaForm(f => ({...f, tipoPagamento: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg">
+                                <option value="unica">Parcela Única</option>
+                                <option value="parcelado">Parcelado</option>
+                            </select>
+                        </div>
+                        {receitaForm.tipoPagamento === 'parcelado' && (
+                            <div className="grid grid-cols-2 gap-4 animate-slide-up">
+                                <div className="form-group">
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">Parcela Atual</label>
+                                    <input type="number" value={receitaForm.parcelaAtual} onChange={e => setReceitaForm(f => ({...f, parcelaAtual: e.target.value}))} min="1" className="w-full p-2 border border-slate-300 rounded-lg" placeholder="Ex: 1" required />
+                                </div>
+                                <div className="form-group">
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">Total de Parcelas</label>
+                                    <input type="number" value={receitaForm.totalParcelas} onChange={e => setReceitaForm(f => ({...f, totalParcelas: e.target.value}))} min="1" className="w-full p-2 border border-slate-300 rounded-lg" placeholder="Ex: 3" required />
+                                </div>
+                            </div>
+                        )}
+                        <div className="form-group">
                             <label className="block text-sm font-medium text-slate-600 mb-1">Plataforma</label>
                             <select value={receitaForm.plataforma} onChange={e => setReceitaForm(f => ({...f, plataforma: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" required>
                                 {RECEITA_PLATAFORMAS.map(p => <option key={p} value={p}>{p}</option>)}
@@ -220,6 +260,25 @@ const AddPage: React.FC = () => {
                             <label className="block text-sm font-medium text-slate-600 mb-1">Valor (R$)</label>
                             <input type="number" value={despesaForm.valor} onChange={e => setDespesaForm(f => ({...f, valor: e.target.value}))} step="0.01" min="0" className="w-full p-2 border border-slate-300 rounded-lg" required />
                         </div>
+                         <div className="form-group">
+                            <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de Pagamento</label>
+                            <select value={despesaForm.tipoPagamento} onChange={e => setDespesaForm(f => ({...f, tipoPagamento: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg">
+                                <option value="unica">Parcela Única</option>
+                                <option value="parcelado">Parcelado</option>
+                            </select>
+                        </div>
+                        {despesaForm.tipoPagamento === 'parcelado' && (
+                            <div className="grid grid-cols-2 gap-4 animate-slide-up">
+                                <div className="form-group">
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">Parcela Atual</label>
+                                    <input type="number" value={despesaForm.parcelaAtual} onChange={e => setDespesaForm(f => ({...f, parcelaAtual: e.target.value}))} min="1" className="w-full p-2 border border-slate-300 rounded-lg" placeholder="Ex: 1" required />
+                                </div>
+                                <div className="form-group">
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">Total de Parcelas</label>
+                                    <input type="number" value={despesaForm.totalParcelas} onChange={e => setDespesaForm(f => ({...f, totalParcelas: e.target.value}))} min="1" className="w-full p-2 border border-slate-300 rounded-lg" placeholder="Ex: 3" required />
+                                </div>
+                            </div>
+                        )}
                         <div className="form-group">
                             <label className="block text-sm font-medium text-slate-600 mb-1">Categoria</label>
                             <select value={despesaForm.categoria} onChange={e => setDespesaForm(f => ({...f, categoria: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" required>

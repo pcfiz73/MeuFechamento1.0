@@ -71,7 +71,14 @@ const DashboardPage: React.FC = () => {
                        {isIncome ? <i className="fas fa-arrow-up text-green-500"></i> : <i className="fas fa-arrow-down text-red-500"></i>}
                     </div>
                     <div>
-                        <div className="font-medium text-slate-800">{transaction.descricao}</div>
+                        <div className="font-medium text-slate-800">
+                            {transaction.descricao}
+                            {transaction.parcelamento && (
+                                <span className="ml-2 text-xs font-semibold text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full">
+                                    {transaction.parcelamento}
+                                </span>
+                            )}
+                        </div>
                         <div className="text-sm text-slate-400">{formatDate(transaction.data)}</div>
                     </div>
                 </div>

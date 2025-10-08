@@ -6,6 +6,7 @@ export interface Receita {
   data: string;
   observacoes: string;
   banco_id: number;
+  parcelamento?: string;
 }
 
 export interface Despesa {
@@ -16,6 +17,7 @@ export interface Despesa {
   data: string;
   observacoes: string;
   banco_id: number;
+  parcelamento?: string;
 }
 
 export interface Metas {
