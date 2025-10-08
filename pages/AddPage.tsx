@@ -2,18 +2,19 @@ import React, { useState, useEffect, useContext } from 'react';
 import { FinanceContext } from '../context/FinanceContext';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import type { Receita, Despesa, NewReceitaData, NewDespesaData } from '../types';
+import type { Receita, Despesa, NewReceitaData, NewDespesaData, NewBancoData } from '../types';
 import { RECEITA_PLATAFORMAS, DESPESA_CATEGORIAS } from '../constants';
 import { formatCurrency } from '../utils';
 
 const AddPage: React.FC = () => {
-    const { financeData, addReceita, updateReceita, addDespesa, updateDespesa, pageContext, navigate } = useContext(FinanceContext);
+    const { financeData, addReceita, updateReceita, addDespesa, updateDespesa, addBanco, pageContext, navigate } = useContext(FinanceContext);
     const { type, id } = pageContext || {};
 
-    const [activeTab, setActiveTab] = useState<'receita' | 'despesa'>(type === 'despesa' ? 'despesa' : 'receita');
+    const [activeTab, setActiveTab] = useState<'receita' | 'despesa' | 'banco'>(type === 'despesa' ? 'despesa' : 'receita');
     const isEditing = Boolean(id);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
+    const [lastSubmittedTab, setLastSubmittedTab] = useState<'receita' | 'despesa' | 'banco' | null>(null);
 
     const getInitialReceitaState = () => ({
         valor: '', plataforma: 'iFood', banco_id: financeData.bancos.length > 0 ? String(financeData.bancos[0].id) : '',
@@ -27,8 +28,13 @@ const AddPage: React.FC = () => {
         tipoPagamento: 'unica', parcelaAtual: '', totalParcelas: ''
     });
 
+    const getInitialBancoState = () => ({
+        nome: '', saldo: ''
+    });
+
     const [receitaForm, setReceitaForm] = useState(getInitialReceitaState());
     const [despesaForm, setDespesaForm] = useState(getInitialDespesaState());
+    const [bancoForm, setBancoForm] = useState(getInitialBancoState());
     
     useEffect(() => {
         setIsSaved(false);
@@ -78,6 +84,7 @@ const AddPage: React.FC = () => {
         } else {
             setReceitaForm(getInitialReceitaState());
             setDespesaForm(getInitialDespesaState());
+            setBancoForm(getInitialBancoState());
             setActiveTab(type === 'despesa' ? 'despesa' : 'receita');
         }
     }, [id, type, isEditing, financeData]);
@@ -134,6 +141,7 @@ const AddPage: React.FC = () => {
                 };
                 await addReceita(newReceita);
             }
+            setLastSubmittedTab('receita');
             setIsSaved(true);
         } catch(error) {
             console.error(error);
@@ -193,10 +201,38 @@ const AddPage: React.FC = () => {
                 };
                 await addDespesa(newDespesa);
             }
+            setLastSubmittedTab('despesa');
             setIsSaved(true);
         } catch(error: any) {
             console.error(error);
             alert(error.message || "Erro ao salvar despesa.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleBancoSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        const saldo = parseFloat(bancoForm.saldo);
+        if (!bancoForm.nome.trim() || isNaN(saldo)) {
+            alert('Nome ou saldo inválido.');
+            setIsSubmitting(false);
+            return;
+        }
+
+        try {
+            const newBanco: NewBancoData = {
+                nome: bancoForm.nome,
+                saldo,
+                conta: '' // 'conta' is not in the form, pass empty string
+            };
+            await addBanco(newBanco);
+            setLastSubmittedTab('banco');
+            setIsSaved(true);
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao cadastrar banco.");
         } finally {
             setIsSubmitting(false);
         }
@@ -206,6 +242,7 @@ const AddPage: React.FC = () => {
         setIsSaved(false);
         setReceitaForm(getInitialReceitaState());
         setDespesaForm(getInitialDespesaState());
+        setBancoForm(getInitialBancoState());
         navigate('add'); 
     };
 
@@ -216,14 +253,20 @@ const AddPage: React.FC = () => {
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <i className="fas fa-check text-3xl text-green-500"></i>
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Transação Salva!</h2>
+                    <h2 className="text-2xl font-bold text-slate-800 mb-2">
+                        {lastSubmittedTab === 'banco' ? 'Banco Salvo!' : 'Transação Salva!'}
+                    </h2>
                     <p className="text-slate-500 mb-6">O que você gostaria de fazer agora?</p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Button variant="secondary" className="w-full" onClick={handleAddAnother}>
-                            Adicionar Outra
+                            Adicionar Outro
                         </Button>
-                        <Button variant="primary" className="w-full" onClick={() => navigate('reports')}>
-                            Ver Histórico
+                        <Button 
+                            variant="primary" 
+                            className="w-full" 
+                            onClick={() => navigate(lastSubmittedTab === 'banco' ? 'dashboard' : 'reports')}
+                        >
+                            {lastSubmittedTab === 'banco' ? 'Ver Dashboard' : 'Ver Histórico'}
                         </Button>
                     </div>
                 </Card>
@@ -233,11 +276,12 @@ const AddPage: React.FC = () => {
 
     return (
         <div className="animate-slide-up space-y-6">
-            <h1 className="text-3xl font-bold text-slate-800">{isEditing ? 'Editar' : 'Adicionar'} Transação</h1>
+            <h1 className="text-3xl font-bold text-slate-800">{isEditing ? 'Editar Transação' : 'Adicionar'}</h1>
             <Card>
                 <div className="flex border-b border-slate-200 mb-6">
                     <button disabled={isEditing} onClick={() => setActiveTab('receita')} className={`flex-1 py-3 font-semibold text-center ${activeTab === 'receita' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Receita</button>
                     <button disabled={isEditing} onClick={() => setActiveTab('despesa')} className={`flex-1 py-3 font-semibold text-center ${activeTab === 'despesa' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Despesa</button>
+                    <button disabled={isEditing} onClick={() => setActiveTab('banco')} className={`flex-1 py-3 font-semibold text-center ${activeTab === 'banco' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Banco</button>
                 </div>
 
                 {activeTab === 'receita' && (
@@ -345,7 +389,6 @@ const AddPage: React.FC = () => {
                         <div className="form-group">
                             <label className="block text-sm font-medium text-slate-600 mb-1">Categoria</label>
                             <select value={despesaForm.categoria} onChange={e => setDespesaForm(f => ({...f, categoria: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" required>
-                                {/* FIX: Corrected typo from DESPESA_CATEGORias to DESPESA_CATEGORIAS. */}
                                 {DESPESA_CATEGORIAS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                             </select>
                         </div>
@@ -366,6 +409,24 @@ const AddPage: React.FC = () => {
                          <div className="flex justify-end pt-4">
                             <Button type="submit" variant="danger" disabled={isSubmitting}>
                                 {isSubmitting ? 'Salvando...' : (isEditing ? 'Salvar Alterações' : 'Adicionar Despesa')}
+                            </Button>
+                        </div>
+                    </form>
+                )}
+
+                {activeTab === 'banco' && (
+                    <form onSubmit={handleBancoSubmit} className="space-y-4">
+                        <div className="form-group">
+                            <label className="block text-sm font-medium text-slate-600 mb-1">Nome do Banco</label>
+                            <input type="text" value={bancoForm.nome} onChange={e => setBancoForm(f => ({...f, nome: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" required placeholder="Ex: Caixa"/>
+                        </div>
+                        <div className="form-group">
+                            <label className="block text-sm font-medium text-slate-600 mb-1">Saldo Inicial (R$)</label>
+                            <input type="number" value={bancoForm.saldo} onChange={e => setBancoForm(f => ({...f, saldo: e.target.value}))} step="0.01" min="0" className="w-full p-2 border border-slate-300 rounded-lg" required placeholder="Ex: 100.50"/>
+                        </div>
+                        <div className="flex justify-end pt-4">
+                            <Button type="submit" variant="primary" disabled={isSubmitting}>
+                                {isSubmitting ? 'Cadastrando...' : 'Cadastrar Banco'}
                             </Button>
                         </div>
                     </form>
