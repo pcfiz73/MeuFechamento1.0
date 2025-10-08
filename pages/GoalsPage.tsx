@@ -1,9 +1,35 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { FinanceContext } from '../context/FinanceContext';
 import Card from '../components/Card';
-import { formatCurrency, formatDate } from '../utils';
-import type { Objetivo, NewObjetivoData } from '../types';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import Button from '../components/Button';
+import { formatCurrency, formatDate, filterDataByPeriod } from '../utils';
+import type { Objetivo } from '../types';
+import { Plus, Edit, Trash2, Target, Edit3 } from 'lucide-react';
+
+// Sub-componente para exibir o progresso de uma meta de ganho
+const IncomeGoalProgress: React.FC<{
+    label: string;
+    current: number;
+    goal: number;
+    percent: number;
+}> = ({ label, current, goal, percent }) => {
+    const progress = Math.min(percent, 100);
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-1">
+                <span className="font-medium text-slate-700 text-sm">{label}</span>
+                <span className={`font-bold text-sm ${progress >= 100 ? 'text-green-500' : 'text-slate-600'}`}>{percent}%</span>
+            </div>
+            <div className="w-full bg-slate-200 rounded-full h-2.5">
+                <div className={`h-2.5 rounded-full transition-all duration-500 ${progress >= 100 ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${progress}%` }}></div>
+            </div>
+             <div className="text-xs text-slate-500 mt-1 text-right">
+                {formatCurrency(current)} de {formatCurrency(goal)}
+            </div>
+        </div>
+    );
+};
+
 
 const GoalCard: React.FC<{
     objetivo: Objetivo,
@@ -18,13 +44,13 @@ const GoalCard: React.FC<{
             <div className="flex justify-between items-center">
                 <h3 className="font-bold text-slate-800">{objetivo.titulo}</h3>
                 <div className="flex items-center gap-3 text-slate-400">
-                    <button onClick={() => onAddValueManual(objetivo.id)} className="hover:text-green-500 transition-colors">
+                    <button onClick={() => onAddValueManual(objetivo.id)} className="hover:text-green-500 transition-colors" aria-label="Adicionar valor">
                         <Plus size={18} />
                     </button>
-                    <button onClick={onEdit} className="hover:text-blue-500 transition-colors">
+                    <button onClick={onEdit} className="hover:text-blue-500 transition-colors" aria-label="Editar">
                         <Edit size={16} />
                     </button>
-                    <button onClick={onDelete} className="hover:text-red-500 transition-colors">
+                    <button onClick={onDelete} className="hover:text-red-500 transition-colors" aria-label="Excluir">
                         <Trash2 size={16} />
                     </button>
                 </div>
@@ -46,49 +72,32 @@ const GoalCard: React.FC<{
 
 
 const GoalsPage: React.FC = () => {
-    const { financeData, addObjetivo, updateObjetivo, deleteObjetivo, openModal } = useContext(FinanceContext);
-    const [isCreating, setIsCreating] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [newGoal, setNewGoal] = useState({
-        titulo: '',
-        meta_valor: '',
-        valor_atual: '0',
-        data_limite: ''
-    });
+    const { financeData, updateObjetivo, deleteObjetivo, openModal } = useContext(FinanceContext);
 
-    const handleNewGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setNewGoal(prev => ({...prev, [e.target.name]: e.target.value}));
-    };
+    const incomeProgress = useMemo(() => {
+        const dailyIncome = filterDataByPeriod(financeData.receitas, 'hoje').reduce((sum, r) => sum + r.valor, 0);
+        const weeklyIncome = filterDataByPeriod(financeData.receitas, 'semana').reduce((sum, r) => sum + r.valor, 0);
+        const monthlyIncome = filterDataByPeriod(financeData.receitas, 'mes').reduce((sum, r) => sum + r.valor, 0);
 
-    const handleCreateGoal = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        const meta_valor = parseFloat(newGoal.meta_valor);
-        const valor_atual = parseFloat(newGoal.valor_atual);
+        return {
+            daily: {
+                current: dailyIncome,
+                goal: financeData.metas.diaria,
+                percent: financeData.metas.diaria > 0 ? Math.round((dailyIncome / financeData.metas.diaria) * 100) : 0,
+            },
+            weekly: {
+                current: weeklyIncome,
+                goal: financeData.metas.semanal,
+                percent: financeData.metas.semanal > 0 ? Math.round((weeklyIncome / financeData.metas.semanal) * 100) : 0,
+            },
+            monthly: {
+                current: monthlyIncome,
+                goal: financeData.metas.mensal,
+                percent: financeData.metas.mensal > 0 ? Math.round((monthlyIncome / financeData.metas.mensal) * 100) : 0,
+            }
+        };
+    }, [financeData.receitas, financeData.metas]);
 
-        if (isNaN(meta_valor) || isNaN(valor_atual) || !newGoal.titulo || !newGoal.data_limite) {
-            alert('Por favor, preencha todos os campos obrigatórios.');
-            setIsSubmitting(false);
-            return;
-        }
-
-        try {
-            const newObjetivo: NewObjetivoData = {
-                titulo: newGoal.titulo,
-                meta_valor,
-                valor_atual,
-                data_limite: newGoal.data_limite
-            };
-            await addObjetivo(newObjetivo);
-            setNewGoal({ titulo: '', meta_valor: '', valor_atual: '0', data_limite: '' });
-            setIsCreating(false);
-        } catch(error) {
-            console.error(error);
-            alert('Falha ao criar meta.');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
 
     const handleGoalDelete = async (id: number) => {
         if (!window.confirm('Tem certeza que deseja excluir este objetivo?')) {
@@ -121,59 +130,43 @@ const GoalsPage: React.FC = () => {
 
         const valorStr = prompt(`Adicionar valor ao objetivo '${objetivo.titulo}':`);
         if (valorStr) {
-            const valor = parseFloat(valorStr);
+            const valor = parseFloat(valorStr.replace(',', '.'));
             if (!isNaN(valor) && valor > 0) {
                 handleAddValue(id, valor);
+            } else {
+                alert('Valor inválido.');
             }
         }
     };
 
     return (
         <div className="animate-slide-up space-y-6">
-            <div className="p-6 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg">
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-lg">
                 <h1 className="text-3xl font-bold">Minhas Metas</h1>
-                <p className="text-amber-100 mt-1 mb-4">Defina e acompanhe seus objetivos</p>
-                <button 
-                  onClick={() => setIsCreating(prev => !prev)} 
-                  className="w-full py-3 px-4 rounded-lg font-semibold bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center gap-2"
-                >
-                    <Plus size={18} /> {isCreating ? 'Cancelar' : 'Nova Meta'}
-                </button>
+                <p className="text-blue-200 mt-1">Acompanhe seus ganhos e objetivos de poupança.</p>
             </div>
             
-            {isCreating && (
-                <Card className="animate-slide-up">
-                    <form onSubmit={handleCreateGoal} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-600 mb-1">Nome da Meta *</label>
-                            <input type="text" name="titulo" value={newGoal.titulo} onChange={handleNewGoalChange} placeholder="Ex: Trocar a moto" className="w-full p-2 border border-slate-300 rounded-lg" required />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Valor Alvo (R$) *</label>
-                                <input type="number" name="meta_valor" value={newGoal.meta_valor} onChange={handleNewGoalChange} step="0.01" min="0" placeholder="0.00" className="w-full p-2 border border-slate-300 rounded-lg" required />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Valor Atual (R$)</label>
-                                <input type="number" name="valor_atual" value={newGoal.valor_atual} onChange={handleNewGoalChange} step="0.01" min="0" placeholder="0" className="w-full p-2 border border-slate-300 rounded-lg" required />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-600 mb-1">Prazo *</label>
-                            <input type="date" name="data_limite" value={newGoal.data_limite} onChange={handleNewGoalChange} className="w-full p-2 border border-slate-300 rounded-lg" required />
-                        </div>
-                        <div className="flex justify-end gap-4 pt-2">
-                            <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 rounded-lg font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors">Cancelar</button>
-                            <button type="submit" className="px-4 py-2 rounded-lg font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors" disabled={isSubmitting}>
-                               {isSubmitting ? 'Criando...' : 'Criar Meta'}
-                            </button>
-                        </div>
-                    </form>
-                </Card>
-            )}
+            <Card>
+                 <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-bold text-slate-800">📊 Metas de Ganhos</h2>
+                    <Button variant="secondary" onClick={() => openModal('meta')}>
+                        <Edit3 size={16} /> Editar Metas
+                    </Button>
+                 </div>
+                 <div className="space-y-4">
+                    <IncomeGoalProgress label="Meta Diária" {...incomeProgress.daily} />
+                    <IncomeGoalProgress label="Meta Semanal" {...incomeProgress.weekly} />
+                    <IncomeGoalProgress label="Meta Mensal" {...incomeProgress.monthly} />
+                 </div>
+            </Card>
 
             <Card>
-                 <h2 className="text-lg font-bold text-slate-800 mb-4">🎯 Metas Ativas</h2>
+                 <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-bold text-slate-800">💰 Objetivos de Poupança</h2>
+                    <Button variant="primary" onClick={() => openModal('objetivo')}>
+                        <Plus size={16} /> Novo Objetivo
+                    </Button>
+                 </div>
                  <div className="space-y-4">
                     {financeData.objetivos.length > 0 ? (
                         financeData.objetivos.map(obj => (
@@ -186,7 +179,11 @@ const GoalsPage: React.FC = () => {
                             />
                         ))
                     ) : (
-                        <p className="text-center text-slate-500 py-8">Nenhum objetivo cadastrado.</p>
+                        <div className="text-center py-8">
+                            <Target size={48} className="mx-auto text-slate-300" />
+                            <p className="mt-4 text-slate-500">Nenhum objetivo cadastrado.</p>
+                            <p className="text-sm text-slate-400">Crie seu primeiro objetivo para começar a poupar!</p>
+                        </div>
                     )}
                  </div>
             </Card>
