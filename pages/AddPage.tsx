@@ -7,7 +7,7 @@ import { RECEITA_PLATAFORMAS, DESPESA_CATEGORIAS } from '../constants';
 import { formatCurrency } from '../utils';
 
 const AddPage: React.FC = () => {
-    const { financeData, addReceita, updateReceita, addDespesa, updateDespesa, addBanco, pageContext, navigate, openModal } = useContext(FinanceContext);
+    const { financeData, addReceita, updateReceita, addDespesa, updateDespesa, addBanco, deleteBanco, pageContext, navigate, openModal } = useContext(FinanceContext);
     const { type, id } = pageContext || {};
 
     const [activeTab, setActiveTab] = useState<'receita' | 'despesa' | 'banco'>(type === 'despesa' ? 'despesa' : 'receita');
@@ -237,6 +237,18 @@ const AddPage: React.FC = () => {
             setIsSubmitting(false);
         }
     };
+
+    const handleDeleteBanco = async (id: number) => {
+        if (!window.confirm('Tem certeza que deseja excluir este banco? Contas com transações associadas não podem ser excluídas.')) {
+            return;
+        }
+        try {
+            await deleteBanco(id);
+        } catch (error: any) {
+            console.error("Erro ao deletar banco:", error);
+            alert(error.message || 'Falha ao excluir banco.');
+        }
+    };
     
     const handleAddAnother = () => {
         setIsSaved(false);
@@ -442,7 +454,25 @@ const AddPage: React.FC = () => {
                                     financeData.bancos.map(banco => (
                                         <div key={banco.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
                                             <span className="font-medium text-slate-700">{banco.nome}</span>
-                                            <span className="font-bold text-green-600">{formatCurrency(banco.saldo)}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-green-600">{formatCurrency(banco.saldo)}</span>
+                                                <div className="flex items-center">
+                                                    <button
+                                                        onClick={() => openModal('banco', banco)}
+                                                        className="text-slate-400 hover:text-blue-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition"
+                                                        aria-label={`Editar conta ${banco.nome}`}
+                                                    >
+                                                        <i className="fas fa-edit"></i>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteBanco(banco.id)}
+                                                        className="text-slate-400 hover:text-red-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition"
+                                                        aria-label={`Excluir conta ${banco.nome}`}
+                                                    >
+                                                        <i className="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     ))
                                 ) : (
