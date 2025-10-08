@@ -14,6 +14,8 @@ export const initialFinanceData: FinanceData = {
         { id: 3, descricao: 'Manutenção', valor: 80.00, categoria: 'manutencao', data: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], observacoes: '', bancoId: 2 }
     ],
     metas: {
+        // FIX: Add missing 'id' property to conform to the Metas type.
+        id: 1,
         diaria: 120.00,
         semanal: 840.00,
         mensal: 3600.00

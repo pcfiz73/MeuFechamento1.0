@@ -20,6 +20,7 @@ export interface Despesa {
 }
 
 export interface Metas {
+  id: number;
   diaria: number;
   semanal: number;
   mensal: number;
